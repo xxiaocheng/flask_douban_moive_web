@@ -8,7 +8,7 @@ watchdog = "*"
 v = {editable = true,version = "*"}
 flask-shell-ipython = "*"
 flask-debugtoolbar = "*"
-fake = "*"
+faker = "*"
 
 [packages]
 flask = "*"

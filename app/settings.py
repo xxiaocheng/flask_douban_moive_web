@@ -28,9 +28,23 @@ class BaseConfig(object):
 
 class DevelopmentConfig(BaseConfig):
     ADMIN_EMAIL='cxxlxx0@gmail.com'
+    MONGODB_SETTINGS={
+        'db':os.getenv('MONGODB_DB','doubanmovie'),
+        'host':os.getenv('MONGODB_HOST','127.0.0.1'),
+        'port':27017,
+        'username':os.getenv('MONGODB_USERNAME'),
+        'password':os.getenv('MONGODB_PASSWORD')
+    }
 
 class TestingConfig(BaseConfig):
-    pass
+    MONGODB_SETTINGS={
+        'db':os.getenv('MONGODB_DB','doubanmovieTest'),
+        'host':os.getenv('MONGODB_HOST','127.0.0.1'),
+        'port':27017,
+        'username':os.getenv('MONGODB_USERNAME'),
+        'password':os.getenv('MONGODB_PASSWORD')
+    }
+    ADMIN_EMAIL='cxxlxx0@gmail.com'
 
 class ProductionCofig(BaseConfig):
     pass

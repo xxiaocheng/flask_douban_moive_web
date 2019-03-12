@@ -10,6 +10,10 @@ class Role(db.Document):
     name=db.StringField()
     permissions=db.ListField()
 
+    def __repr__(self):
+        super().__repr__()
+        return '<%s: Role object>'% self.name
+
     @staticmethod
     def init_role():
         roles_permissions_map = {
@@ -49,6 +53,10 @@ class User(db.Document, UserMixin):
     notification_count = db.IntField(default=0)
     role=db.ReferenceField(Role)
 
+    def __repr__(self):
+        super().__repr__()
+        return '<%s: User object>'% self.username
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.generate_avatar()
@@ -56,6 +64,7 @@ class User(db.Document, UserMixin):
         self.save()
 
     def set_role(self):
+        # 为新添加的用户设置默认角色
         if self.role==None:
             if self.email == current_app.config['ADMIN_EMAIL']:
                 self.role = Role.objects.get(name='Administrator')
@@ -69,132 +78,130 @@ class User(db.Document, UserMixin):
         return check_password_hash(self.password_hash, password)
 
     def follow(self, user):
-        """
+        """ 关注``user``
         :param user :the instance of ``User``
         """
-        if not self.is_follow(user):
-            follow=Follow(followed=user,follower=self)
-            follow.save()
-            self.followings_count=self.followings_count+1
-            self.save()
-            user.followers_count=self.followers_count+1
-            user.save()
+        if self.username!=user.username:
+            if not self.is_follow(user):
+                follow=Follow(followed=user,follower=self)
+                follow.save()
+                self.update(inc__followings_count=1)
+                user.update(inc__followers_count=1)
 
     def unfollow(self, user):
-        if Follow.objects(followed=user,follower=self,is_deleted=False).first():
-            Follow.objects(followed=user,follower=self).update(is_deleted=True)
-            self.followings_count=self.followings_count-1
-            self.save()
-            user.followers_count=self.followers_count-1
-            user.save()
+        # 取消对 ``user`` 关注
+        if self.username!=user.username:
+            if user.is_follow_by(self):
+                Follow.objects(followed=user,follower=self).update(is_deleted=True)
+                self.update(dec__followings_count=1)
+                user.update(dec__followers_count=1)
             
-    def _update_rating(self,movie,rating,delete_rating=False):
-        """
-        :param rating :``Int``
-        """
-        rating_obj=Rating.objects(user=self,movie=movie,is_deleted=False).first()
-        rating_pepple=movie.wish_by_count+movie.do_by_count+movie.collect_by_count
-        if not delete_rating:     
-            # 当添加新的评分记录时更新电影评分
-            
-            new_rating=(movie.rating*rating_pepple+rating)/(rating_pepple+1)
-            print('onr')
-        if delete_rating:
-            # 当删除评分记录时更新电影评分
-            new_rating=(movie.rating*rating_pepple-rating)/(rating_pepple-1)
-            print('tewo')
-        Movie.objects(movie_id=movie.movie_id).update(rating=new_rating)
-            
+    def _update_rating(self,movie):
+        # 在用户对电影进行评价后或者更改评价后 更新电影评分,0 分计入评分
+        score_sum=Rating.objects(movie=movie).sum('score')
+        
+        if movie.rating_count>0:
+            new_score=score_sum/movie.rating_count
+            movie.update(set__score=new_score)
+        if movie.rating_count==0:
+            movie.update(set__score=0)
 
-    def _rating_on_movie(self,movie,category,rating=None,comment=None,tags=None):
-        assert rating in [x for x in range(0,11)] or rating is None
+    def _rating_on_movie(self,movie,category,score=0,comment=None,tags=None):
+        assert score in [x for x in range(0,11)] 
         assert category in [0,1,2]
-
-        # 当评分记录中有当前用户对当前电影评分时候更新此评分记录,并且更新该电影评分
-        if Rating.objects(user=self,movie=movie,is_deleted=False):
-            last_rating_obj=Rating.objects(user=self,movie=movie,is_deleted=False).first()
-            last_category= last_rating_obj.category
-            last_rating= last_rating_obj.rating
-            if last_category==0:
-                self.wish_count-=1
-                movie.wish_by_count-=1
-                # self.save()
-                # movie.save()
-            if last_category==1:
-                self.do_count-=1
-                movie.do_by_count-=1
-                # self.save()
-                # movie.save()
-            if last_category==2:
-                self.collect_count-=1
-                movie.collect_by_count-=1
-                # self.save()
-                # movie.save()
+        # 好恶心的代码,自己也不想看,反正测试通过了...
+        if not movie.is_deleted:
+            last_rating=Rating.objects(user=self,movie=movie,is_deleted=False).first()
             if last_rating:
-                self._update_rating(movie,last_rating,delete_rating=True)
-            Rating.objects(user=self,movie=movie,is_deleted=False).delete()
-            
-        rating_obj=Rating(user=self,movie=movie,category=category,rating=rating,comment=comment,tags=tags)
-        rating_obj.save()
-
-        if rating:
-            self._update_rating(movie,rating,delete_rating=False)
-        if category==0:
-            self.wish_count+=1
-            movie.wish_by_count+=1
-            # self.save()
-            # movie.save()
-        if category==1:
-            self.do_count+=1
-            movie.do_by_count+=1
-            # self.save()
-            # movie.save()
-        if category==2:
-            self.collect_count+=1
-            movie.collect_by_count+=1
-            # self.save()
-            # movie.save()
-            
-        self.save()
-        movie.save()
-
-    def wish_movie(self,movie,rating=None,comment=None,tags=None):
-        self._rating_on_movie(movie,category=0,rating=rating,comment=comment,tags=tags)
+                last_category=last_rating.category
+                last_score=last_rating.score
+                if last_score>0:
+                    movie.update(dec__rating_count=1)
+                    movie.reload()
+                if score>0 :
+                    last_rating.update(category=category,score=score,comment=comment,tags=tags,rating_time=datetime.now())
+                    movie.update(inc__rating_count=1)
+                    movie.reload()
+                else:
+                    last_rating.update(category=category,score=score,comment=comment,tags=tags,rating_time=datetime.now())
+                    movie.reload()
+                if last_category!=category:
+                    if last_category==0:
+                        self.update(dec__wish_count=1)
+                        movie.update(dec__wish_by_count=1)
+                    if last_category==1:
+                        self.update(dec__do_count=1)
+                        movie.update(dec__do_by_count=1)
+                    if last_category==2:
+                        self.update(dec__collect_count=1)
+                        movie.update(dec__collect_by_count=1)
+                    if category==0:
+                        self.update(inc__wish_count=1)
+                        movie.update(inc__wish_by_count=1)
+                    if category==1:
+                        self.update(inc__do_count=1)
+                        movie.update(inc__do_by_count=1)
+                    if category==2:
+                        self.update(inc__collect_count=1)
+                        movie.update(inc__collect_by_count=1)
+            else:
+                if score:       
+                    rating=Rating(user=self,movie=movie,category=category,score=score,comment=comment,tags=tags)
+                    movie.update(inc__rating_count=1)
+                else:
+                    rating=Rating(user=self,movie=movie,category=category,comment=comment,tags=tags)
+                rating.save()
+                if category==0:
+                    self.update(inc__wish_count=1)
+                    movie.update(inc__wish_by_count=1)
+                if category==1:
+                    self.update(inc__wish_count=1)
+                    movie.update(inc__wish_by_count=1)
+                if category==2:
+                    self.update(inc__wish_count=1)
+                    movie.update(inc__wish_by_count=1)
+            movie.reload()
+            self._update_rating(movie)
+        
+    def wish_movie(self,movie,score=0,comment=None,tags=None):
+        self._rating_on_movie(movie,category=0,score=score,comment=comment,tags=tags)
         
 
-    def do_movie(self,movie,rating=None,comment=None,tags=None):
-        self._rating_on_movie(movie,category=1,rating=rating,comment=comment,tags=tags)
+    def do_movie(self,movie,score=0,comment=None,tags=None):
+        self._rating_on_movie(movie,category=1,score=score,comment=comment,tags=tags)
 
 
-    def collect_movie(self, movie,rating=None,comment=None,tags=None):
-        self._rating_on_movie(movie,category=2,rating=rating,comment=comment,tags=tags)
+    def collect_movie(self, movie,score=0,comment=None,tags=None):
+        self._rating_on_movie(movie,category=2,score=score,comment=comment,tags=tags)
 
-    def is_wish(self,movie):
-        pass
-    
-    def is_do(self,movie):
+    def interest_on_movie(self,movie):
         pass
 
-    def is_collect(self,movie):
-        pass
 
     def is_follow(self, user):
-        pass
+        if Follow.objects(followed=user,follower=self,is_deleted=False):
+            return True
+        else:
+            return False
 
     def is_follow_by(self, user):
-        pass
+        if Follow.objects(followed=self,follower=user,is_deleted=False):
+            return True
+        else:
+            return False
 
     def lock(self):
-        pass
+        self.lock=True
+        self.save()
 
     def unlock(self):
-        pass
-
-    def delete_this(self):
-        pass
-
+        self.lock=False
+        self.save()
+        
     def check_permission(self, permission_name):
-        pass
+        if permission_name in self.role.permissions:
+            return True
+        return False
 
     def generate_avatar(self):
         avatar = Identicon()
@@ -202,6 +209,27 @@ class User(db.Document, UserMixin):
         self.avatar_s = filenames[0]
         self.avatar_m = filenames[1]
         self.avatar_l = filenames[2]
+
+    def delete_rating(self,movie):
+        rating=Rating.objects(user=self,movie=movie,is_deleted=False).first()
+        if rating:
+            category=rating.category
+            score=rating.score
+            rating.update(is_deleted=True)
+            if score>0:
+                movie.update(dec__rating_count=1)
+            if category==0:
+                self.update(dec__wish_count=1)
+                movie.update(dec__wish_by_count=1)
+            if category==1:
+                self.update(dec__do_count=1)
+                movie.update(dec__do_by_count=1)
+            if category==2:
+                self.update(dec__collect_count=1)
+                movie.update(dec__collect_by_count=1)
+            self.reload()
+            movie.reload()
+            self._update_rating(movie)
 
 
 class Movie(db.Document):
@@ -221,14 +249,29 @@ class Movie(db.Document):
     original_title = db.StringField()
     summary = db.StringField()
     aka = db.ListField()
-    rating = db.FloatField(default=0)
+    score = db.FloatField(default=0)
+    rating_count=db.IntField(default=0)
     directors = db.ListField()
     casts = db.ListField()
     is_deleted = db.BooleanField()
     created_time = db.DateTimeField(default=datetime.now)
 
+    def __repr__(self):
+        super().__repr__()
+        return '<%s: Movie object>'% self.movie_id
+
     def delete_this(self):
-        pass
+        ratings=Rating.objects(movie=self,is_deleted=False)
+        for rating in ratings:
+            rating.update(is_deleted=True)
+            category=rating.category
+            if category==0:
+                rating.user.update(dec__wish_count=1)
+            if category==1:
+                rating.user.update(dec__do_count=1)
+            if category==2:
+                rating.user.update(dec__collect_count=1)
+        self.update(is_deleted=True,wish_by_count=0,do_by_count=0,collect_by_count=0,score=0,rating_count=0)
 
 
 class Follow(db.Document):
@@ -237,13 +280,19 @@ class Follow(db.Document):
     follow_time = db.DateTimeField(default=datetime.now)
     is_deleted = db.BooleanField(default=False)
 
+    def __repr__(self):
+        super().__repr__()
+        return '<%s following %s: Follow object>'% self.follower,self.followed
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-    # add it to notifations
+    # add it to notifications
+        self.add_to_notification()
 
     
-    def delete_this(self):
-        pass
+    def add_to_notification(self):
+        follow_motification=Notification(receiver=self.followed,category=0,follow_info=self)
+        follow_motification.save()
 
 
 class Rating(db.Document):
@@ -251,13 +300,12 @@ class Rating(db.Document):
     movie = db.ReferenceField(Movie)
     rating_time = db.DateTimeField(default=datetime.now)
     is_deleted = db.BooleanField(default=False)
-    rating = db.IntField(default=0)
+    score = db.IntField(default=0)
     comment = db.StringField()
     tags = db.ListField()
     like_count = db.IntField(default=0)
     report_count = db.IntField(default=0)
     category=db.IntField() # 0>wish 1>do 2>collect 
-
 
     def like_by(self, user):
         pass
@@ -269,7 +317,7 @@ class Rating(db.Document):
         pass
 
     def delete_this(self):
-        pass
+        pass 
 
 
 class Celebrity(db.Document):
@@ -285,7 +333,8 @@ class Celebrity(db.Document):
     is_deleted = db.BooleanField()
 
     def delete_this(self):
-        pass
+        self.is_deleted=True
+        self.save()
 
 
 class Like(db.Document):
@@ -305,9 +354,9 @@ class Report(db.Document):
 
 
 class Notification(db.Document):
-    receiver_id = db.ReferenceField(User)
-    is_read = db.BooleanField()
+    receiver = db.ReferenceField(User)
+    is_read = db.BooleanField(default=False)
     category = db.IntField()  # 0>follow 1>like
     like_info = db.ReferenceField(Like)
-    follow = db.ReferenceField(Follow)
+    follow_info = db.ReferenceField(Follow)
 
