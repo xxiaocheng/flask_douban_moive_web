@@ -9,6 +9,7 @@ v = {editable = true,version = "*"}
 flask-shell-ipython = "*"
 flask-debugtoolbar = "*"
 faker = "*"
+autopep8 = "*"
 
 [packages]
 flask = "*"
