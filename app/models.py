@@ -1,10 +1,12 @@
 from datetime import datetime
 
-from flask import current_app
+from flask import current_app, g
 from flask_avatars import Identicon
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.extensions import db
+
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired
 
 
 class Role(db.Document):
@@ -34,7 +36,7 @@ class Role(db.Document):
 
 
 class User(db.Document):
-    username = db.StringField(required=True)
+    username = db.StringField(required=True)  # weiyi
     email = db.EmailField(required=True)
     password_hash = db.StringField()
     name = db.StringField()
@@ -65,6 +67,44 @@ class User(db.Document):
         self.generate_avatar()
         self.set_role()
         self.save()
+
+    def generate_token(self, expiration=3600):
+        """根据用户id生成带有过期时间的token,默认过期时间为3600秒
+        """
+        s = Serializer(current_app.config['SECRET_KEY'], expires_in=expiration)
+        token = s.dumps({'username': self.username}).decode('ascii')
+        return token
+
+    @staticmethod
+    def verify_auth_token(token):
+        """验证认证token是否正确 ,返回 ``User``
+        """
+        s = Serializer(current_app.config['SECRET_KEY'])
+        try:
+            data = s.loads(token)
+        except SignatureExpired:
+            return None  # valid token, but expired
+        except BadSignature:
+            return None  # invalid token
+        user = User.objects(username=data['username'],is_deleted=False).first()
+        if user is None:
+            return None
+        g.current_user=user
+        return user
+
+    @staticmethod
+    def create_user(username, email, password):
+        """ 根据用户名,邮箱,密码创建新用户,返回创建结果 ``True`` or ``False``
+        """
+        if User.objects(username=username, is_deleted=False).first() or User.objects(email=email, is_deleted=False).first():
+            return False
+        try:
+            user = User(username=username, email=email)
+            user.set_password(password)
+            user.save()
+            return True
+        except:
+            return False
 
     def set_role(self):
         # 为新添加的用户设置默认角色

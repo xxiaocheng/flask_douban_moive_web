@@ -20,6 +20,7 @@ redis = "*"
 flask-avatars = "*"
 flask-cors = "*"
 flask-restful = "*"
+flask-httpauth = "*"
 
 [requires]
 python_version = "3.6"
