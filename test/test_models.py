@@ -6,6 +6,7 @@ from flask import current_app
 from app import create_app
 from app.models import (Follow, Like, Movie, Notification, Rating, Report,
                         Role, User)
+from app.extensions import db
 
 fake = Faker()
 
@@ -323,4 +324,12 @@ class ModelsTestCase(unittest.TestCase):
         
 
     def tearDown(self):
-        return super().tearDown()
+        self.context.pop()
+        Role.objects.delete()
+        User.objects.delete()
+        Movie.objects.delete()
+        Rating.objects.delete()
+        Follow.objects.delete()
+        Notification.objects.delete()
+        Report.objects.delete()
+        Like.objects.delete()

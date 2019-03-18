@@ -7,7 +7,6 @@ verify_ssl = true
 watchdog = "*"
 v = {editable = true,version = "*"}
 flask-shell-ipython = "*"
-flask-debugtoolbar = "*"
 faker = "*"
 autopep8 = "*"
 
@@ -20,6 +19,8 @@ pymongo = "==3.5.1"
 redis = "*"
 flask-login = "*"
 flask-avatars = "*"
+flask-cors = "*"
+flask-restful = "*"
 
 [requires]
 python_version = "3.6"

@@ -13,8 +13,7 @@ class BaseConfig(object):
         'username':os.getenv('MONGODB_USERNAME'),
         'password':os.getenv('MONGODB_PASSWORD')
     }
-    DEBUG_TB_PANELS=['flask_mongoengine.panels.MongoDebugPanel']
-    
+
     # flask_caching
     CACHE_TYPE='redis'
     CACHE_REDIS_DB='0'
@@ -25,6 +24,7 @@ class BaseConfig(object):
     AVATARS_SAVE_PATH = os.path.join(UPLOAD_PATH, 'avatar_images')
     AVATARS_SIZE_TUPLE = (30, 100, 200)
     ADMIN_EMAIL=''
+
 
 class DevelopmentConfig(BaseConfig):
     ADMIN_EMAIL='cxxlxx0@gmail.com'

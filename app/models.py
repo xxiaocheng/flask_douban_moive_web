@@ -2,7 +2,6 @@ from datetime import datetime
 
 from flask import current_app
 from flask_avatars import Identicon
-from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.extensions import db
@@ -34,7 +33,7 @@ class Role(db.Document):
                 permissions=roles_permissions_map[role_name])
 
 
-class User(db.Document, UserMixin):
+class User(db.Document):
     username = db.StringField(required=True)
     email = db.EmailField(required=True)
     password_hash = db.StringField()
