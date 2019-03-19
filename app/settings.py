@@ -21,10 +21,10 @@ class BaseConfig(object):
 
     UPLOAD_PATH = os.path.join(basedir, 'uploads')
 
-    AVATARS_SAVE_PATH = os.path.join(UPLOAD_PATH, 'avatar_images')
+    AVATARS_SAVE_PATH = os.path.join(UPLOAD_PATH, 'avatar')
     AVATARS_SIZE_TUPLE = (30, 100, 200)
     ADMIN_EMAIL=''
-
+    WEB_BASE_URL='' # 前端部署的url
 
 class DevelopmentConfig(BaseConfig):
     ADMIN_EMAIL='cxxlxx0@gmail.com'

@@ -40,7 +40,7 @@ class AuthTokenAPI(Resource):
             'Pragma': 'no-cache'
         }
 
-api.add_resource(AuthTokenAPI, '/token')
+api.add_resource(AuthTokenAPI, '/oauth/token')
 
 @auth.verify_token
 def verify_token(token):

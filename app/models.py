@@ -57,6 +57,8 @@ class User(db.Document):
     is_locked = db.BooleanField(default=False)
     notification_count = db.IntField(default=0)
     role = db.ReferenceField(Role)
+    signature=db.StringField()  # 个性签名
+
 
     def __repr__(self):
         super().__repr__()

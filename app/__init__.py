@@ -26,7 +26,6 @@ def register_extensions(app):
     db.init_app(app)
     cache.init_app(app)
     avatars.init_app(app)
-    api.init_app(auth_bp)
     api.init_app(api_bp)
 
 def register_blueprints(app):
@@ -34,7 +33,6 @@ def register_blueprints(app):
     :param app: the instance of ``Flask``
     """
     app.register_blueprint(photo_bp,url_prefix='/photo')
-    app.register_blueprint(auth_bp,url_prefix='/oauth')
     app.register_blueprint(api_bp,url_prefix='/api/v1')
 
 def register_errorhandlers(app):
