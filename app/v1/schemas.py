@@ -19,7 +19,8 @@ def user_schema(user):
         "followings_count": user.followings_count,
         "followed": user.is_follow(g.current_user),  # 本人被ta被关注
         "follow": user.is_follow(g.current_user),  # 本人关注ta
-        "alt": current_app.config['WEB_BASE_URL']+'/people/'+user.username
+        "alt": current_app.config['WEB_BASE_URL']+'/people/'+user.username,
+        "last_login":user.last_login_time.strftime("%Y-%m-%d %H:%M:%S")
     }
 
 
@@ -33,3 +34,4 @@ def items_schema(items, prev, next, first, last, pagination):
         "count": pagination.total,
         "pages": pagination.pages
     }
+    

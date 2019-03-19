@@ -1,4 +1,4 @@
-from flask import Blueprint,g,jsonify
+from flask import g,jsonify
 from flask_restful import Resource, abort, reqparse
 from flask_httpauth import HTTPTokenAuth
 
@@ -6,7 +6,6 @@ from app.extensions import api
 from app.models import User
 from functools import wraps
 
-auth_bp = Blueprint('auth', __name__)
 
 auth=HTTPTokenAuth(scheme='Bearer')
 

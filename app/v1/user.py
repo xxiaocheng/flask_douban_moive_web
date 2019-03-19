@@ -1,4 +1,4 @@
-from flask import Blueprint, url_for
+from flask import  url_for,g
 from flask_restful import Resource, abort, reqparse
 
 from app.extensions import api
@@ -6,8 +6,6 @@ from app.models import User, Follow
 
 from .auth import auth, email_confirm_required, permission_required
 from .schemas import user_schema, items_schema
-
-api_bp = Blueprint('api', __name__)
 
 
 class UserRegister(Resource):
@@ -28,7 +26,13 @@ class UserRegister(Resource):
             }
         else:
             abort(403, message='Registered User Failed.')
-
+    
+    @auth.login_required
+    def get(self):
+        """返回当前用户所有信息
+        """
+        current_user=g.current_user
+        return user_schema(current_user)
 
 api.add_resource(UserRegister, '/user')
 

@@ -4,8 +4,7 @@ from flask import Flask,jsonify
 
 from app.extensions import avatars, cache, cors, db,api
 from app.v1.photo import photo_bp
-from app.v1.auth import auth_bp
-from app.v1.resources import api_bp
+from app.v1 import api_bp
 from app.settings import config
 
 def create_app(config_name=None):

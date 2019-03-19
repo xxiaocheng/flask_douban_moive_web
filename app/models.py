@@ -75,6 +75,8 @@ class User(db.Document):
         """
         s = Serializer(current_app.config['SECRET_KEY'], expires_in=expiration)
         token = s.dumps({'username': self.username}).decode('ascii')
+        self.last_login_time=datetime.now()
+        self.save()
         return token
 
     @staticmethod
