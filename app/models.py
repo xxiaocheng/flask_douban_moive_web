@@ -59,6 +59,13 @@ class User(db.Document):
     role = db.ReferenceField(Role)
     signature=db.StringField()  # 个性签名
 
+    meta = {'indexes': [
+        {'fields': ['$username', "$signature"],
+         'default_language': 'english',
+         'weights': {'username': 10, 'signature': 2}
+        }
+    ]}
+
 
     def __repr__(self):
         super().__repr__()
@@ -134,6 +141,8 @@ class User(db.Document):
                 follow.save()
                 self.update(inc__followings_count=1)
                 user.update(inc__followers_count=1)
+                return True
+        return False
 
     def unfollow(self, user):
         # 取消对 ``user`` 关注
@@ -145,6 +154,8 @@ class User(db.Document):
                 Notification.objects(follow_info=follow_ob).delete()
                 self.update(dec__followings_count=1)
                 user.update(dec__followers_count=1)
+                return True
+        return False
 
     def _update_rating(self, movie):
         # 在用户对电影进行评价后或者更改评价后 更新电影评分,0 分计入评分

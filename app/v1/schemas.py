@@ -3,7 +3,6 @@ from flask import url_for, current_app, g
 
 def user_schema(user):
     return{
-        "uid": str(user.id),
         "name": user.username,
         "email": user.email,
         "loc_name": user.location,
