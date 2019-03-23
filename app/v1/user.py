@@ -53,7 +53,7 @@ class UserRegister(Resource):
             return{
                 "message":"illegal password"
             },403
-            
+
         g.current_user.update(is_deleted=True)
         return{
             "message":'succeed'

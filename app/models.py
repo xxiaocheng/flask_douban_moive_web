@@ -59,13 +59,6 @@ class User(db.Document):
     role = db.ReferenceField(Role)
     signature=db.StringField()  # 个性签名
 
-    meta = {'indexes': [
-        {'fields': ['$username', "$signature"],
-         'default_language': 'english',
-         'weights': {'username': 10, 'signature': 2}
-        }
-    ]}
-
 
     def __repr__(self):
         super().__repr__()
@@ -298,6 +291,23 @@ class User(db.Document):
             movie.reload()
             self._update_rating(movie)
 
+class Celebrity(db.Document):
+    celebrity_id = db.StringField(required=True)
+    name = db.StringField(required=True)
+    genger = db.StringField(required=True)
+    avatar = db.StringField()
+    created_time = db.DateTimeField(default=datetime.now)
+    born_place = db.StringField()
+    aka_en = db.ListField()
+    name_en = db.StringField()
+    aka = db.ListField()
+    is_deleted = db.BooleanField()
+
+    def delete_this(self):
+        self.is_deleted = True
+        self.save()
+
+
 
 class Movie(db.Document):
     movie_id = db.StringField(required=True)
@@ -310,7 +320,7 @@ class Movie(db.Document):
     image = db.StringField()
     seasons_count = db.IntField()
     episodes_count = db.IntField()
-    countrues = db.ListField()
+    countries = db.ListField()
     genres = db.ListField()
     current_season = db.IntField()
     original_title = db.StringField()
@@ -318,10 +328,10 @@ class Movie(db.Document):
     aka = db.ListField()
     score = db.FloatField(default=0)
     rating_count = db.IntField(default=0)
-    # directors = db.ListField(db.ReferenceField(Celebrity))
-    # casts = db.ListField(db.ReferenceField(Celebrity))
-    directors = db.ListField()
-    casts = db.ListField()
+    directors = db.ListField(db.ReferenceField(Celebrity))
+    casts = db.ListField(db.ReferenceField(Celebrity))
+    # directors = db.ListField()
+    # casts = db.ListField()
     is_deleted = db.BooleanField()
     created_time = db.DateTimeField(default=datetime.now)
 
@@ -398,21 +408,6 @@ class Rating(db.Document):
             self.update(inc__report_count=1)
 
 
-class Celebrity(db.Document):
-    celebrity_id = db.StringField(required=True)
-    name = db.StringField(required=True)
-    genger = db.StringField(required=True)
-    avatar = db.StringField()
-    created_time = db.DateTimeField(default=datetime.now)
-    born_place = db.StringField()
-    aka_en = db.ListField()
-    name_en = db.StringField()
-    aka = db.ListField()
-    is_deleted = db.BooleanField()
-
-    def delete_this(self):
-        self.is_deleted = True
-        self.save()
 
 
 class Like(db.Document):
@@ -440,7 +435,8 @@ class Report(db.Document):
 class Notification(db.Document):
     receiver = db.ReferenceField(User)
     is_read = db.BooleanField(default=False)
-    category = db.IntField()  # 0>follow 1>like
+    category = db.IntField()  # 0>follow 1>like 2>system
     like_info = db.ReferenceField(Like)
     follow_info = db.ReferenceField(Follow)
+    system_info=db.StringField()   #系统通知消息
     created_time = db.DateTimeField(default=datetime.now)

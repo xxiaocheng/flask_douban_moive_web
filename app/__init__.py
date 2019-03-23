@@ -2,7 +2,7 @@ import os
 
 from flask import Flask,jsonify
 
-from app.extensions import avatars, cache, cors, db,api
+from app.extensions import avatars, cache, cors, db,api,redis_store
 from app.v1.photo import photo_bp
 from app.v1 import api_bp
 from app.settings import config
@@ -25,7 +25,9 @@ def register_extensions(app):
     db.init_app(app)
     cache.init_app(app)
     avatars.init_app(app)
-    api.init_app(api_bp)
+    redis_store.init_app(app)
+    api.init_app(api_bp)   # flask_restful 文档关于蓝本的用法
+    
 
 def register_blueprints(app):
     """Register the blueprints to the app.

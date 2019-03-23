@@ -19,12 +19,15 @@ class BaseConfig(object):
     CACHE_REDIS_DB='0'
     CACHE_REDIS_HOST=os.getenv('REDIS_HOST','127.0.0.1')
 
+    # flask_redis 
+    REDIS_URL = "redis://localhost:6379/0"
+
     UPLOAD_PATH = os.path.join(basedir, 'uploads')
 
     AVATARS_SAVE_PATH = os.path.join(UPLOAD_PATH, 'avatar')
     AVATARS_SIZE_TUPLE = (30, 100, 200)
     ADMIN_EMAIL=''
-    WEB_BASE_URL='' # 前端部署的url
+    WEB_BASE_URL='' # 前端部署服务器的url
 
 class DevelopmentConfig(BaseConfig):
     ADMIN_EMAIL='cxxlxx0@gmail.com'
