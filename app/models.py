@@ -5,7 +5,7 @@ from flask_avatars import Identicon
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.extensions import db
-
+from app.helpers.redis_utils import add_movie_to_rank_redis
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired
 
 
@@ -57,8 +57,7 @@ class User(db.Document):
     is_locked = db.BooleanField(default=False)
     notification_count = db.IntField(default=0)
     role = db.ReferenceField(Role)
-    signature=db.StringField()  # 个性签名
-
+    signature = db.StringField()  # 个性签名
 
     def __repr__(self):
         super().__repr__()
@@ -75,7 +74,7 @@ class User(db.Document):
         """
         s = Serializer(current_app.config['SECRET_KEY'], expires_in=expiration)
         token = s.dumps({'username': self.username}).decode('ascii')
-        self.last_login_time=datetime.now()
+        self.last_login_time = datetime.now()
         self.save()
         return token
 
@@ -90,10 +89,11 @@ class User(db.Document):
             return None  # valid token, but expired
         except BadSignature:
             return None  # invalid token
-        user = User.objects(username=data['username'],is_deleted=False).first()
+        user = User.objects(
+            username=data['username'], is_deleted=False).first()
         if user is None:
             return None
-        g.current_user=user
+        g.current_user = user
         return user
 
     @staticmethod
@@ -201,6 +201,8 @@ class User(db.Document):
                     if category == 2:
                         self.update(inc__collect_count=1)
                         movie.update(inc__collect_by_count=1)
+                 
+                last_rating.reload()
             else:
                 if score:
                     rating = Rating(user=self, movie=movie, category=category,
@@ -221,6 +223,8 @@ class User(db.Document):
                     movie.update(inc__collect_by_count=1)
             movie.reload()
             self._update_rating(movie)
+            movie.reload()
+            add_movie_to_rank_redis(movie)
 
     def wish_movie(self, movie, score=0, comment=None, tags=None):
         self._rating_on_movie(movie, category=0, score=score,
@@ -291,17 +295,19 @@ class User(db.Document):
             movie.reload()
             self._update_rating(movie)
 
+
 class Celebrity(db.Document):
     douban_id = db.StringField()
+    imdb_id = db.StringField()
     name = db.StringField(required=True)
     genger = db.StringField(required=True)
-    avatar = db.StringField()
+    avatar = db.StringField(deault='deault.png')
     created_time = db.DateTimeField(default=datetime.now)
     born_place = db.StringField()
     aka_en = db.ListField()
     name_en = db.StringField()
     aka = db.ListField()
-    is_deleted = db.BooleanField()
+    is_deleted = db.BooleanField(default=False)
 
     def delete_this(self):
         self.is_deleted = True
@@ -309,22 +315,23 @@ class Celebrity(db.Document):
 
 
 class Tag(db.Document):
-    name=db.StringField(required=True)
+    name = db.StringField(required=True)
 
 
 class Movie(db.Document):
     douban_id = db.StringField()
+    imdb_id = db.StringField()
     title = db.StringField(required=True)
     subtype = db.StringField(required=True)
     wish_by_count = db.IntField(default=0)
     do_by_count = db.IntField(default=0)
     collect_by_count = db.IntField(default=0)
     year = db.IntField()
-    image = db.StringField()
+    image = db.StringField(deault='deault.png')
     seasons_count = db.IntField()
     episodes_count = db.IntField()
     countries = db.ListField()
-    genres = db.ListField(db.ReferenceField(Tag))   #标签
+    genres = db.ListField(db.ReferenceField(Tag))  # 标签
     current_season = db.IntField()
     original_title = db.StringField()
     summary = db.StringField()
@@ -333,7 +340,7 @@ class Movie(db.Document):
     rating_count = db.IntField(default=0)
     directors = db.ListField(db.ReferenceField(Celebrity))
     casts = db.ListField(db.ReferenceField(Celebrity))
-    is_deleted = db.BooleanField()
+    is_deleted = db.BooleanField(default=False)
     created_time = db.DateTimeField(default=datetime.now)
 
     def __repr__(self):
@@ -409,8 +416,6 @@ class Rating(db.Document):
             self.update(inc__report_count=1)
 
 
-
-
 class Like(db.Document):
     user = db.ReferenceField(User)
     rating = db.ReferenceField(Rating)
@@ -439,5 +444,5 @@ class Notification(db.Document):
     category = db.IntField()  # 0>follow 1>like 2>system
     like_info = db.ReferenceField(Like)
     follow_info = db.ReferenceField(Follow)
-    system_info=db.StringField()   #系统通知消息
+    system_info = db.StringField()  # 系统通知消息
     created_time = db.DateTimeField(default=datetime.now)

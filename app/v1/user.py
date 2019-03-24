@@ -124,7 +124,7 @@ class UserFollow(Resource):
         last = url_for('.userfollow', username=username, follow_or_unfollow=follow_or_unfollow,
                        page=pagination.pages, per_page=args['per_page'], _external=True)
 
-        return items_schema(items, prev, next, first, last, pagination)
+        return items_schema(items, prev, next, first, last, pagination.total,pagination.pages)
 
 
 api.add_resource(UserFollow, '/users/<username>/<follow_or_unfollow>')

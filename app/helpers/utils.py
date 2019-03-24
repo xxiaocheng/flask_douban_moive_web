@@ -19,3 +19,10 @@ def save_image(image_url,cate):
 
     with open(os.path.join(base_path,file_name), 'wb') as file:
         file.write(requests.get(image_url).content)
+
+
+def query_by_id_list(document,id_list):
+    """@param document : object ``app.models.Movie`` 
+    @param id_list :document.id ``list`` 
+    """
+    return [document.objects(id=id,is_deleted=False).first() for id in id_list if id_list]

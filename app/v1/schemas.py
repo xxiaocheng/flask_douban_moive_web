@@ -2,15 +2,15 @@ from flask import url_for, current_app, g
 from app.models import Movie
 
 
-def items_schema(items, prev, next, first, last, pagination):
+def items_schema(items, prev, next, first, last, total,pages):
     return{
         "items": items,
         "prev": prev,
         "next": next,
         "first": first,
         "last": last,
-        "count": pagination.total,
-        "pages": pagination.pages
+        "count": total,
+        "pages": pages
     }
 
 def user_summary_schema(user):
@@ -36,6 +36,10 @@ def celebrity_summary_schema(celebrity):
     }
 
 def user_schema(user):
+    if user.last_login_time:
+        last_login=user.last_login_time.strftime("%Y-%m-%d %H:%M:%S") 
+    else:
+        last_login=None
     return{
         "name": user.username,
         "email": user.email,
@@ -53,7 +57,7 @@ def user_schema(user):
         "followed": user.is_follow(g.current_user),  # 本人被ta被关注
         "follow": user.is_follow(g.current_user),  # 本人关注ta
         "alt": current_app.config['WEB_BASE_URL']+'/people/'+user.username,
-        "last_login":user.last_login_time.strftime("%Y-%m-%d %H:%M:%S")
+        "last_login":last_login
     }
 
 def movie_schema(movie):
@@ -99,3 +103,21 @@ def celebrity_schema(celebrity):
     }
     
 
+
+def movie_pagination_to_json( end_point,items,pagination, args):
+
+    prev = None
+    if pagination.has_prev:
+        prev = url_for(
+            end_point, type_name=args['type_name'], page=args['page']-1, per_page=args['per_page'], _external=True)
+
+    next = None
+    if pagination.has_next:
+        prev = url_for(
+            end_point, type_name=args['type_name'], page=args['page']+1, per_page=args['per_page'], _external=True)
+
+    first = url_for(
+        end_point, type_name=args['type_name'], page=1, perpage=args['per_page'], _external=True)
+    last = prev = url_for(
+        end_point, type_name=args['type_name'], page=pagination.pages, perpage=args['per_page'], _external=True)
+    return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
