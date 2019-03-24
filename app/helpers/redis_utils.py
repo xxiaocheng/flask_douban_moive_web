@@ -48,7 +48,7 @@ def add_rating_to_redis(rating):
     """@param rating: Rating instance
     在用户评分时,添加所评价电影到redis zset中 ,并设置过期时间 
     """
-    redis_store.zadd('rating:week',{rating.movie.movie_id:rating.movie.score})
-    redis_store.zadd('rating:month',{rating.movie.movie_id:rating.movie.score})
+    redis_store.zadd('rating:week',{str(rating.movie.id):rating.movie.score})
+    redis_store.zadd('rating:month',{str(rating.movie.id):rating.movie.score})
     redis_store.expire('rating:week',time=60*60*24*7)
     redis_store.expire('rating:month',time=60*60*24*30)

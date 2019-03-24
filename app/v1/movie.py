@@ -60,3 +60,13 @@ class Recommend(Resourced):
 api.add_resource(Recommend,'/movies/Recommend')
 
 
+class Leaderboard(Resource):
+
+    def get(self,time_range):
+        pass
+
+        # tag or timerange or 
+        # tag database class
+
+
+api.add_resource(Leaderboard,'/movies/leaderboard/<time_range>')

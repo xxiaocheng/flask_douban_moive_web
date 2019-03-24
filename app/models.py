@@ -292,7 +292,7 @@ class User(db.Document):
             self._update_rating(movie)
 
 class Celebrity(db.Document):
-    celebrity_id = db.StringField(required=True)
+    douban_id = db.StringField()
     name = db.StringField(required=True)
     genger = db.StringField(required=True)
     avatar = db.StringField()
@@ -308,9 +308,12 @@ class Celebrity(db.Document):
         self.save()
 
 
+class Tag(db.Document):
+    name=db.StringField(required=True)
+
 
 class Movie(db.Document):
-    movie_id = db.StringField(required=True)
+    douban_id = db.StringField()
     title = db.StringField(required=True)
     subtype = db.StringField(required=True)
     wish_by_count = db.IntField(default=0)
@@ -321,7 +324,7 @@ class Movie(db.Document):
     seasons_count = db.IntField()
     episodes_count = db.IntField()
     countries = db.ListField()
-    genres = db.ListField()
+    genres = db.ListField(db.ReferenceField(Tag))   #标签
     current_season = db.IntField()
     original_title = db.StringField()
     summary = db.StringField()
@@ -330,14 +333,12 @@ class Movie(db.Document):
     rating_count = db.IntField(default=0)
     directors = db.ListField(db.ReferenceField(Celebrity))
     casts = db.ListField(db.ReferenceField(Celebrity))
-    # directors = db.ListField()
-    # casts = db.ListField()
     is_deleted = db.BooleanField()
     created_time = db.DateTimeField(default=datetime.now)
 
     def __repr__(self):
         super().__repr__()
-        return '<%s: Movie object>' % self.movie_id
+        return '<%s: Movie object>' % self.title
 
     def delete_this(self):
         ratings = Rating.objects(movie=self, is_deleted=False)

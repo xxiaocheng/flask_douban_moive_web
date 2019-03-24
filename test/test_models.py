@@ -37,8 +37,8 @@ class ModelsTestCase(unittest.TestCase):
             user = User(username=fake.word(), email=fake.email())
             user.set_password(fake.password())
             user.save()
-            movie = Movie(movie_id=fake.md5(),
-                          title=fake.word(), subtype=fake.word())
+            movie = Movie(
+                title=fake.word(), subtype=fake.word())
             movie.save()
 
     def test_follow(self):
@@ -292,19 +292,21 @@ class ModelsTestCase(unittest.TestCase):
         self.assertEqual(len(like_a2_a2a), 0)
         self.assertEqual(len(Notification.objects(
             like_info=like_a2_a2a.first())), 0)
-        
+
     def test_add_follow_to_nofication(self):
         user_list = User.objects()
         user_a = user_list[0]
         user_b = user_list[1]
         user_a.follow(user_b)
-        notification=Notification.objects(receiver=user_b,category=0).first()
-        self.assertEqual(len(Notification.objects(receiver=user_b)),1)
-        self.assertEqual(notification.follow_info.follower,user_a)
+        notification = Notification.objects(
+            receiver=user_b, category=0).first()
+        self.assertEqual(len(Notification.objects(receiver=user_b)), 1)
+        self.assertEqual(notification.follow_info.follower, user_a)
         user_a.reload()
         user_b.reload()
         user_a.unfollow(user_b)
-        self.assertEqual(len(Notification.objects(receiver=user_a,category=0)),0)
+        self.assertEqual(
+            len(Notification.objects(receiver=user_a, category=0)), 0)
 
     def test_report(self):
         user_list = User.objects()
@@ -313,15 +315,12 @@ class ModelsTestCase(unittest.TestCase):
         movie_list = Movie.objects()
         movie_a = movie_list[0]
         user_a.wish_movie(movie_a)
-        rating=Rating.objects(user=user_a,movie=movie_a,is_deleted=False)
+        rating = Rating.objects(user=user_a, movie=movie_a, is_deleted=False)
         rating.first().report_by(user_a)
-        self.assertEqual(len(Report.objects()),0)
+        self.assertEqual(len(Report.objects()), 0)
         rating.first().report_by(user_b)
-        report=Report.objects(rating=rating.first()).first()
-        self.assertEqual(report.user,user_b)
-        
-
-        
+        report = Report.objects(rating=rating.first()).first()
+        self.assertEqual(report.user, user_b)
 
     def tearDown(self):
         self.context.pop()
