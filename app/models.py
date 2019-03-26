@@ -3,7 +3,7 @@ from datetime import datetime
 from flask import current_app, g
 from flask_avatars import Identicon
 from werkzeug.security import check_password_hash, generate_password_hash
-
+from mongoengine.errors import NotUniqueError
 from app.extensions import db
 from app.helpers.redis_utils import add_movie_to_rank_redis
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired
@@ -33,6 +33,10 @@ class Role(db.Document):
                 role.save()
             Role.objects(name=role_name).update(
                 permissions=roles_permissions_map[role_name])
+
+class Tag(db.Document):
+    name = db.StringField(required=True,unique=True)
+    cate=db.IntField(default=0)  # 0-> user  1->system
 
 
 class User(db.Document):
@@ -160,10 +164,22 @@ class User(db.Document):
         if movie.rating_count == 0:
             movie.update(set__score=0)
 
-    def _rating_on_movie(self, movie, category, score=0, comment=None, tags=None):
+    def _parse_tags_to_tag_list(self,tags:str):
+        # 将以空格分割的标签 转换为标签对象   
+        tag_list=tags.split(' ')
+        tag_obj_list=[]
+        for tag in tag_list:
+            try:
+                tag_obj_list.append(Tag(name=tag).save())
+            except NotUniqueError:
+                tag_obj_list.append(Tag.objects(name=tag).first())
+        return tag_obj_list
+
+    def _rating_on_movie(self, movie, category, score=0, comment=None, tags=''):
         assert score in [x for x in range(0, 11)]
         assert category in [0, 1, 2]
         # 好恶心的代码,自己也不想看,反正测试通过了...
+        tags=self._parse_tags_to_tag_list(tags)
         if not movie.is_deleted:
             last_rating = Rating.objects(
                 user=self, movie=movie, is_deleted=False).first()
@@ -315,7 +331,8 @@ class Celebrity(db.Document):
 
 
 class Tag(db.Document):
-    name = db.StringField(required=True)
+    name = db.StringField(required=True,unique=True)
+    cate=db.IntField(default=0)  # 0-> user  1->system
 
 
 class Movie(db.Document):
@@ -390,7 +407,7 @@ class Rating(db.Document):
     is_deleted = db.BooleanField(default=False)
     score = db.IntField(default=0)
     comment = db.StringField()
-    tags = db.ListField()
+    tags = db.ListField(db.ReferenceField(Tag))
     like_count = db.IntField(default=0)
     report_count = db.IntField(default=0)
     category = db.IntField()  # 0>wish 1>do 2>collect

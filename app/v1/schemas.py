@@ -57,7 +57,8 @@ def user_schema(user):
         "followed": user.is_follow(g.current_user),  # 本人被ta被关注
         "follow": user.is_follow(g.current_user),  # 本人关注ta
         "alt": current_app.config['WEB_BASE_URL']+'/people/'+user.username,
-        "last_login":last_login
+        "last_login":last_login,
+        "role":user.role.name
     }
 
 def movie_schema(movie):
@@ -101,23 +102,14 @@ def celebrity_schema(celebrity):
         'direct_movies':[movie_summary_schema(movie) for movie in Movie.objects(directors__in=[celebrity]) if Movie.objects(directors__in=[celebrity]) ],
         'casts_movies':[movie_summary_schema(movie) for movie in Movie.objects(casts__in=[celebrity]) if Movie.objects(casts__in=[celebrity])]
     }
-    
 
-
-def movie_pagination_to_json( end_point,items,pagination, args):
-
-    prev = None
-    if pagination.has_prev:
-        prev = url_for(
-            end_point, type_name=args['type_name'], page=args['page']-1, per_page=args['per_page'], _external=True)
-
-    next = None
-    if pagination.has_next:
-        prev = url_for(
-            end_point, type_name=args['type_name'], page=args['page']+1, per_page=args['per_page'], _external=True)
-
-    first = url_for(
-        end_point, type_name=args['type_name'], page=1, perpage=args['per_page'], _external=True)
-    last = prev = url_for(
-        end_point, type_name=args['type_name'], page=pagination.pages, perpage=args['per_page'], _external=True)
-    return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
+def rating_schema(rating):
+    return{
+        'cate':rating.category,
+        'score':rating.score,
+        'time':rating.rating_time.strftime("%Y-%m-%d %H:%M:%S") ,
+        'tags':[tag.name for tag in rating.tags if rating.tags],
+        'username':rating.user.username,
+        'likecount':rating.like_count,
+        'useravatar':url_for('photo.send_avatar_file', filename=rating.user.avatar_l, _external=True),
+    }
