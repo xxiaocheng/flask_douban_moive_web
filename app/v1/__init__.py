@@ -7,3 +7,4 @@ from .auth import *
 from .movie import *
 from .search import *
 from .tag import *
+from .rating import *

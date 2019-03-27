@@ -3,6 +3,7 @@ import json
 
 
 def email_task(user, confirm_email_or_reset_password):
+    assert confirm_email_or_reset_password in ['confirm' or 'reset']
     return{
         'to': user.email,
         'cate': confirm_email_or_reset_password,

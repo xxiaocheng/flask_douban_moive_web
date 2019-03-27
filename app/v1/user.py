@@ -6,7 +6,7 @@ from app.models import User, Follow
 
 from .auth import auth, email_confirm_required, permission_required
 from .schemas import user_schema, items_schema
-
+from app.helpers.redis_utils import *
 
 class UserRegister(Resource):
 
@@ -26,11 +26,13 @@ class UserRegister(Resource):
             return {
                 "message":"illegal username or password"
             },403
-
-        if User.create_user(username=args['username'], email=args['email'], password=args['password']):
+        user=User.create_user(username=args['username'], email=args['email'], password=args['password'])
+        if user:
+            send_confirm_email_task=email_task(user,confirm_email_or_reset_password='confirm')
+            add_email_task_to_redis(send_confirm_email_task)
             return{
-                'message': 'Registered User Succeed.',
-                'username': args['username']
+                'message': 'Registered User Succeed,please confirm your email of the count.',
+                'username': user.username
             }
         else:
             abort(403, message='Registered User Failed.')
@@ -166,3 +168,14 @@ class FriendShip(Resource):
 
 api.add_resource(FriendShip, '/users/<follow_or_unfollow>')
 
+class Password(Resource):
+    
+    @auth.login_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('password', location='form')
+        args = parser.parse_args()
+
+
+
+api.add_resource(Password,'/user/password')

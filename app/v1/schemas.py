@@ -112,4 +112,5 @@ def rating_schema(rating):
         'username':rating.user.username,
         'likecount':rating.like_count,
         'useravatar':url_for('photo.send_avatar_file', filename=rating.user.avatar_l, _external=True),
+        'id':str(rating.id)
     }

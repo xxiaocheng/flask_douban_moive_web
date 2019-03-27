@@ -110,9 +110,9 @@ class User(db.Document):
             user = User(username=username, email=email)
             user.set_password(password)
             user.save()
-            return True
+            return user
         except:
-            return False
+            return None
 
     def set_role(self):
         # 为新添加的用户设置默认角色
@@ -310,6 +310,12 @@ class User(db.Document):
             self.reload()
             movie.reload()
             self._update_rating(movie)
+    
+    def is_like_rating(self,rating):
+        like=Like.objects(user=self,rating=rating).first()
+        if like:
+            return True
+        return False
 
 
 class Celebrity(db.Document):
@@ -431,6 +437,27 @@ class Rating(db.Document):
             report = Report(user=user, rating=self)
             report.save()
             self.update(inc__report_count=1)
+    
+    def delete_self(self):
+        movie=self.movie
+        user=self.user
+        category = self.category
+        score = self.score
+        self.update(is_deleted=True)
+        if score > 0:
+            movie.update(dec__rating_count=1)
+        if category == 0:
+            user.update(dec__wish_count=1)
+            movie.update(dec__wish_by_count=1)
+        if category == 1:
+            user.update(dec__do_count=1)
+            movie.update(dec__do_by_count=1)
+        if category == 2:
+            user.update(dec__collect_count=1)
+            movie.update(dec__collect_by_count=1)
+        user.reload()
+        movie.reload()
+        user._update_rating(movie)
 
 
 class Like(db.Document):

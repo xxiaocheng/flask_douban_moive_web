@@ -330,17 +330,39 @@ class MovieInfo(Resource):
 api.add_resource(MovieInfo, '/movie/<movieid>')
 
 
-class AddMovie(Resource):
+class MovieAction(Resource):
 
-    # 添加登录检查和权限检查装饰器
+    # @auth.login_required
+    # @permission_required('UPLOAD_MOVIE')
     def post(self):
         # 添加一个新的电影
         return{
-            'message': 'add o movie here'
+            'message': 'add  movie here'
+        }
+    
+    # @auth.login_required
+    # @permission_required('DELETED_MOVIE')
+    def delete(self):
+        parser=reqparse.RequestParser()
+        parser.add_argument('movieid',required=True,location='form',type=str)
+        args=parser.parse_args()
+        try:
+            n=Movie.objects(id=args['movieid'],is_deleted=False).update(is_deleted=True)
+        except ValidationError:
+            return{
+                'message':'illegal movieid'
+            },402
+        if n==1:
+            return {
+                'message':'delete this movie successfuly '
+            }
+        return{
+            'message':'movie not exist'
         }
 
 
-api.add_resource(AddMovie, '/movie')
+
+api.add_resource(MovieAction, '/movie')
 
 
 class UserInterestMovie(Resource):
@@ -444,3 +466,8 @@ class MovieRating(Resource):
 
 
 api.add_resource(MovieRating, '/movie/<movieid>/<category>')
+
+
+class RemoveRating(Resource):
+    pass
+    
