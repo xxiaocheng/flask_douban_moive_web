@@ -173,9 +173,31 @@ class Password(Resource):
     @auth.login_required
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('password', location='form')
+        parser.add_argument('type_name',choices=['reset','change'],required=True,location='form')
+        args_ = parser.parse_args()
+        parser.add_argument('oldpassword', required=True if args_['type_name']=='change' else False ,location='form')
+        parser.add_argument('newpassword', required=True if args_['type_name']=='change' else False ,location='form')
+        parser.add_argument('newpassword2', required=True if args_['type_name']=='change' else False ,location='form')
         args = parser.parse_args()
-
-
+        user=g.current_user
+        if args_['type_name']=='change':
+            if args['newpassword']!=args['newpassword2']:
+                return{
+                    'message':'two password not equal'
+                },403
+            if user.validate_password(args['oldpassword']):
+                user.set_password(args['newpassword'])
+                return{
+                    'message':'change password successfuly'
+                }
+            return {
+                'message':'password check failed'
+            },403
+        else:
+            task=email_task(user=user,confirm_email_or_reset_password='reset')
+            add_email_task_to_redis(task)
+            return{
+                'message':'the reset-password email will be  sent to user\'s email soon'
+            }
 
 api.add_resource(Password,'/user/password')
