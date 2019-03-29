@@ -1,13 +1,15 @@
 from app.extensions import redis_store
 import json
+from datetime import datetime
+from app.settings import Operations
 
-
-def email_task(user, confirm_email_or_reset_password):
-    assert confirm_email_or_reset_password in ['confirm' , 'reset']
+def email_task(user, cate):
+    assert cate in [Operations.CHANGE_EMAIL,Operations.CONFIRM,Operations.RESET_PASSWORD]
     return{
         'to': user.email,
-        'cate': confirm_email_or_reset_password,
-        'username': user.username
+        'cate': cate,
+        'username': user.username,
+        'time':datetime.now
     }
 
 

@@ -123,7 +123,7 @@ class User(db.Document):
                 self.role = Role.objects.get(name='User')
 
     def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+        self.update(password_hash = generate_password_hash(password))
 
     def validate_password(self, password):
         return check_password_hash(self.password_hash, password)

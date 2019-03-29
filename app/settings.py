@@ -4,6 +4,13 @@ import sys
 
 basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 
+
+class Operations:
+    CONFIRM = 'confirm'
+    RESET_PASSWORD = 'reset-password'
+    CHANGE_EMAIL = 'change-email'
+
+
 class BaseConfig(object):
     SECRET_KEY = os.getenv('SECRET_KEY', 'secret stringos')
     MONGODB_SETTINGS={
@@ -27,7 +34,12 @@ class BaseConfig(object):
     AVATARS_SAVE_PATH = os.path.join(UPLOAD_PATH, 'avatar')
     AVATARS_SIZE_TUPLE = (30, 100, 200)
     ADMIN_EMAIL=''
-    WEB_BASE_URL='' # 前端部署服务器的url
+    WEB_BASE_URL='http://www.baidu.com' # 前端部署服务器的url
+
+    # sendgrid
+    EMAIL_SENDER='noreply@miaomovie.com'
+
+    EXPIRATION=60*60*24
 
 class DevelopmentConfig(BaseConfig):
     ADMIN_EMAIL='cxxlxx0@gmail.com'

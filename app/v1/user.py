@@ -1,12 +1,16 @@
-from flask import url_for, g
-from flask_restful import Resource, abort, reqparse
 import re
+
+from flask import g, url_for
+from flask_restful import Resource, abort, reqparse
+
 from app.extensions import api
-from app.models import User, Follow
+from app.helpers.redis_utils import *
+from app.models import Follow, User
+from app.settings import Operations
 
 from .auth import auth, email_confirm_required, permission_required
-from .schemas import user_schema, items_schema
-from app.helpers.redis_utils import *
+from .schemas import items_schema, user_schema
+
 
 class UserRegister(Resource):
 
@@ -28,7 +32,7 @@ class UserRegister(Resource):
             },403
         user=User.create_user(username=args['username'], email=args['email'], password=args['password'])
         if user:
-            send_confirm_email_task=email_task(user,confirm_email_or_reset_password='confirm')
+            send_confirm_email_task=email_task(user,cate=Operations.CHANGE_EMAIL)
             add_email_task_to_redis(send_confirm_email_task)
             return{
                 'message': 'Registered User Succeed,please confirm your email of the count.',
@@ -168,36 +172,63 @@ class FriendShip(Resource):
 
 api.add_resource(FriendShip, '/users/<follow_or_unfollow>')
 
-class Password(Resource):
+class ChangePassword(Resource):
     
     @auth.login_required
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('type_name',choices=['reset','change'],required=True,location='form')
-        args_ = parser.parse_args()
-        parser.add_argument('oldpassword', required=True if args_['type_name']=='change' else False ,location='form')
-        parser.add_argument('newpassword', required=True if args_['type_name']=='change' else False ,location='form')
-        parser.add_argument('newpassword2', required=True if args_['type_name']=='change' else False ,location='form')
+        parser.add_argument('oldpassword', required=True  ,location='form')
+        parser.add_argument('newpassword', required=True  ,location='form')
+        parser.add_argument('newpassword2', required=True  ,location='form')
         args = parser.parse_args()
         user=g.current_user
-        if args_['type_name']=='change':
-            if args['newpassword']!=args['newpassword2']:
-                return{
-                    'message':'two password not equal'
-                },403
-            if user.validate_password(args['oldpassword']):
-                user.set_password(args['newpassword'])
-                return{
-                    'message':'change password successfuly'
-                }
-            return {
-                'message':'password check failed'
-            },403
-        else:
-            task=email_task(user=user,confirm_email_or_reset_password='reset')
-            add_email_task_to_redis(task)
+        if args['newpassword']!=args['newpassword2']:
             return{
-                'message':'the reset-password email will be  sent to user\'s email soon'
+                'message':'two password not equal'
+            },403
+        if user.validate_password(args['oldpassword']):
+            user.set_password(args['newpassword'])
+            return{
+                'message':'change password successfuly'
             }
+        return {
+            'message':'password check failed'
+        },403
+        
 
-api.add_resource(Password,'/user/password')
+api.add_resource(ChangePassword,'/user/change-password')
+
+
+class ResetPassword(Resource):
+
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('email', required=True  ,location='form')
+        args = parser.parse_args()
+        
+        user=User.objects(email=args['email'],is_deleted=False).first()
+        if not user:
+            return{
+                'message':'no user found'
+            },404
+        
+        task=email_task(user=user,cate=Operations.RESET_PASSWORD)
+        add_email_task_to_redis(task)
+        return{
+            'message':'the reset-password email will be  sent to user\'s email soon'
+        }
+                
+api.add_resource(ResetPassword,'/user/reset-password')
+
+class ChangeEmail(Resource):
+    
+    @auth.login_required
+    def post(self):
+        user=g.current_user
+        task=email_task(user=user.username,cate=Operations.CHANGE_EMAIL)
+        add_email_task_to_redis(task)
+        return{
+            'message':'th link for change email had sent to your email.'
+        }
+
+api.add_resource(ChangeEmail,'/user/change-email')

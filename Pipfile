@@ -24,6 +24,7 @@ flask-restful = "*"
 flask-httpauth = "*"
 requests = "*"
 flask-redis = "*"
+sendgrid = "*"
 
 [requires]
 python_version = "3.6"
