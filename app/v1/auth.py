@@ -47,7 +47,7 @@ class AuthTokenAPI(Resource):
             return{
                 'message': 'email not confirmed,please check you email.'
             }, 403,
-        expiration = current_app.config('EXPIRATION')
+        expiration = current_app.config['EXPIRATION']
         token = user.generate_token(expiration=expiration)
 
         return{
@@ -128,7 +128,7 @@ class account(Resource):
             parser.add_argument('newpassword', required=True, location='form')
             parser.add_argument('newpassword2', required=True, location='form')
             args = parser.parse_args()
-            if args['password'] != args['password2']:
+            if args['newpassword'] != args['newpassword2']:
                 return{
                     'message': 'two password not equal'
                 }, 403
@@ -140,9 +140,9 @@ class account(Resource):
                     'message': 'illegal password'
                 }, 403
 
-            if not validate_email_confirm_token(token=args['token'], operation=Operations.CHANGE_EMAIL, new_password=args['newpassword']):
+            if not validate_email_confirm_token(token=args['token'], operation=Operations.RESET_PASSWORD, new_password=args['newpassword']):
                 return{
-                    'message': 'user not found'
+                    'message': 'token error'
                 }, 404
             else:
                 return{
@@ -151,13 +151,13 @@ class account(Resource):
         elif type_name == Operations.CHANGE_EMAIL:
             parser.add_argument('newemail', required=True, location='form')
             args = parser.parse_args()
-            if not validate_email_confirm_token(token=args['token'], operation=Operations.CHANGE_EMAIL, new_email=args['new_email']):
+            if not validate_email_confirm_token(token=args['token'], operation=Operations.CHANGE_EMAIL, new_email=args['newemail']):
                 return{
                     'message': 'error'
                 }, 400
             else:
                 return{
-                    'message': 'email had changed.'
+                    'message': 'email had changed, please check you new email to confirm it .'
                 }
         else:
             abort(404)

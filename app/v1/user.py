@@ -32,7 +32,7 @@ class UserRegister(Resource):
             },403
         user=User.create_user(username=args['username'], email=args['email'], password=args['password'])
         if user:
-            send_confirm_email_task=email_task(user,cate=Operations.CHANGE_EMAIL)
+            send_confirm_email_task=email_task(user,cate=Operations.CONFIRM)
             add_email_task_to_redis(send_confirm_email_task)
             return{
                 'message': 'Registered User Succeed,please confirm your email of the count.',
@@ -200,7 +200,8 @@ api.add_resource(ChangePassword,'/user/change-password')
 
 
 class ResetPassword(Resource):
-
+    """重置密码
+    """
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument('email', required=True  ,location='form')
@@ -221,11 +222,13 @@ class ResetPassword(Resource):
 api.add_resource(ResetPassword,'/user/reset-password')
 
 class ChangeEmail(Resource):
-    
+    """
+    更改邮箱
+    """
     @auth.login_required
     def post(self):
         user=g.current_user
-        task=email_task(user=user.username,cate=Operations.CHANGE_EMAIL)
+        task=email_task(user=user,cate=Operations.CHANGE_EMAIL)
         add_email_task_to_redis(task)
         return{
             'message':'th link for change email had sent to your email.'

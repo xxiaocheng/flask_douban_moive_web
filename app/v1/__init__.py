@@ -8,3 +8,5 @@ from .movie import *
 from .search import *
 from .tag import *
 from .rating import *
+from .notification import *
+from .admin import *

@@ -25,6 +25,7 @@ flask-httpauth = "*"
 requests = "*"
 flask-redis = "*"
 sendgrid = "*"
+celery = "*"
 
 [requires]
 python_version = "3.6"

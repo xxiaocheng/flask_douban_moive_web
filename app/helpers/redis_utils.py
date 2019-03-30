@@ -1,6 +1,6 @@
 from app.extensions import redis_store
 import json
-from datetime import datetime
+from time import time
 from app.settings import Operations
 
 def email_task(user, cate):
@@ -9,7 +9,7 @@ def email_task(user, cate):
         'to': user.email,
         'cate': cate,
         'username': user.username,
-        'time':datetime.now
+        'time':time()
     }
 
 
@@ -72,4 +72,4 @@ def redis_zset_paginate(name, page=1, per_page=20, desc=True, withscores=False):
     """
     start = per_page*(page-1)
     end = start+per_page-1
-    return [value.decode()for value in redis_store.zrange(name, start=start, end=end, desc=desc, withscores=withscores) if redis_store.zrange(name, start=start, end=end, desc=desc, withscores=withscores)]
+    return [value.decode() for value in redis_store.zrange(name, start=start, end=end, desc=desc, withscores=withscores) if redis_store.zrange(name, start=start, end=end, desc=desc, withscores=withscores)]
