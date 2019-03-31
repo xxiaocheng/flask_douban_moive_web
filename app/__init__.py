@@ -2,7 +2,7 @@ import os
 
 from flask import Flask,jsonify
 
-from app.extensions import avatars, cache, cors, db,api,redis_store
+from app.extensions import avatars, cache, cors, db,api,redis_store,scheduler
 from app.v1.photo import photo_bp
 from app.v1 import api_bp
 from app.settings import config
@@ -27,6 +27,12 @@ def register_extensions(app):
     avatars.init_app(app)
     redis_store.init_app(app)
     api.init_app(api_bp)   # flask_restful 文档关于蓝本的用法
+    # flask_apscheduler
+    scheduler.init_app(app)
+    scheduler.start()
+    redis_store.app=app #为了发送邮件部分能够在程序上下文中运行
+
+
     
 
 def register_blueprints(app):

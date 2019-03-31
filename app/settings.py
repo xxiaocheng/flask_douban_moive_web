@@ -41,6 +41,20 @@ class BaseConfig(object):
 
     EXPIRATION=60*60*24
 
+    #APScheduler
+    # SCHEDULER_API_ENABLED = True
+    JOBS=[
+        {
+            'id': 'send_email_job',
+            'func': 'app.tasks.email_tasks:handle_email',
+            'trigger': 'interval',
+            'seconds': 10
+        }
+    ]
+    SCHEDULER_EXECUTORS = {
+        'default': {'type': 'threadpool', 'max_workers': 100}
+    }
+
 class DevelopmentConfig(BaseConfig):
     ADMIN_EMAIL='cxxlxx0@gmail.com'
     MONGODB_SETTINGS={

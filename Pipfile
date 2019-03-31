@@ -25,7 +25,7 @@ flask-httpauth = "*"
 requests = "*"
 flask-redis = "*"
 sendgrid = "*"
-celery = "*"
+flask-apscheduler = "*"
 
 [requires]
 python_version = "3.6"
