@@ -25,7 +25,7 @@ class CelebrityInfo(Resource):
 
         return celebrity_schema(celebrity)
 
-    @auth.login_required
+    # @auth.login_required
     # @permission_required('DELETE_CELEBRITY')
     def delete(self,id):
         # 删除一个艺人信息  ,需要验证具备权限的用户操作  
@@ -51,7 +51,7 @@ api.add_resource(CelebrityInfo ,'/celebrity/<id>')
 
 
 
-def AddCelebrity(Resource):
+class AddCelebrity(Resource):
 
     # @auth.login_required
     # @permission_require('UPLOAD_CELEBRITY')
@@ -59,7 +59,7 @@ def AddCelebrity(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('role_id')
         args = parser.parse_args()
-        pass
+        
 
 
 api.add_resource(AddCelebrity,'/celebrity')

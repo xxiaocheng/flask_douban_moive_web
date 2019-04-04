@@ -372,8 +372,13 @@ class ImportDouban(Resource):
         parser.add_argument('douban_id',required=True,location='form')
         args = parser.parse_args()
         user=g.current_user
+        if user.douban_imported:
+            return {
+                'message':'you had imported it already.'
+            },403
         task=import_info_from_douban_task(user,args.douban_id)
         add_import_info_from_douban_task_to_redis(task)
+        user.update(douban_imported=True)
 
         return{
             'message':'task added.'

@@ -62,6 +62,7 @@ class User(db.Document):
     notification_count = db.IntField(default=0)
     role = db.ReferenceField(Role)
     signature = db.StringField()  # 个性签名
+    douban_imported=db.BooleanField(default=False)
 
     def __repr__(self):
         super().__repr__()
