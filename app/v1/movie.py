@@ -466,8 +466,3 @@ class MovieRating(Resource):
 
 
 api.add_resource(MovieRating, '/movie/<movieid>/<category>')
-
-
-class RemoveRating(Resource):
-    pass
-    

@@ -29,7 +29,11 @@ class BaseConfig(object):
     # flask_redis 
     REDIS_URL = "redis://localhost:6379/0"
 
+    #upload dir
     UPLOAD_PATH = os.path.join(basedir, 'uploads')
+    AVATAR_UPLOAD_PATH=os.path.join(UPLOAD_PATH,'avatar')
+    MOVIE_IMAGE_UPLOAD_PATH=os.path.join(UPLOAD_PATH,'movie')
+    CELEBRITY_IMAGE_UPLOAD_PATH=os.path.join(UPLOAD_PATH,'celebrity')
 
     AVATARS_SAVE_PATH = os.path.join(UPLOAD_PATH, 'avatar')
     AVATARS_SIZE_TUPLE = (30, 100, 200)
@@ -54,6 +58,9 @@ class BaseConfig(object):
     SCHEDULER_EXECUTORS = {
         'default': {'type': 'threadpool', 'max_workers': 100}
     }
+
+    # image can upload with ext
+    UPLOAD_IMAGE_EXT=['.jpg','.png']
 
 class DevelopmentConfig(BaseConfig):
     ADMIN_EMAIL='cxxlxx0@gmail.com'

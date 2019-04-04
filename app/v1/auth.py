@@ -32,7 +32,7 @@ class AuthTokenAPI(Resource):
         if user is None or not user.validate_password(args['password']):
             return abort(http_status_code=400, message='Either the username or password was invalid.')
 
-        if user.is_locked:
+        if user.is_locked():
             return{
                 "message": "user is locked"
             }, 403

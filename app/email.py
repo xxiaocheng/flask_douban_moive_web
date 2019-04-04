@@ -38,6 +38,3 @@ def send_change_email_email(token, to,username):
     return response.status_code
 
 
-def send_email_from_redis():
-    pass
-

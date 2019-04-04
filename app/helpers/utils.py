@@ -1,6 +1,7 @@
 import requests
 from flask import current_app
 import os
+import uuid
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer,BadSignature, SignatureExpired
 from app.settings import Operations
 from app.models import User
@@ -84,3 +85,9 @@ def validate_email_confirm_token(token, operation, user=None, new_password=None,
     else:
         return False
     return True
+
+
+def rename_image(old_filename):
+    ext = os.path.splitext(old_filename)[1]
+    new_filename = uuid.uuid4().hex + ext
+    return new_filename

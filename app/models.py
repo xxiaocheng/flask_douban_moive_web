@@ -34,9 +34,10 @@ class Role(db.Document):
             Role.objects(name=role_name).update(
                 permissions=roles_permissions_map[role_name])
 
+
 class Tag(db.Document):
-    name = db.StringField(required=True,unique=True)
-    cate=db.IntField(default=0)  # 0-> user  1->system
+    name = db.StringField(required=True, unique=True)
+    cate = db.IntField(default=0)  # 0-> user  1->system
 
 
 class User(db.Document):
@@ -58,7 +59,6 @@ class User(db.Document):
     avatar_raw = db.StringField()
     confirmed_email = db.BooleanField(default=False)
     is_deleted = db.BooleanField(default=False)
-    is_locked = db.BooleanField(default=False)
     notification_count = db.IntField(default=0)
     role = db.ReferenceField(Role)
     signature = db.StringField()  # 个性签名
@@ -77,7 +77,7 @@ class User(db.Document):
         """根据用户id生成带有过期时间的token,默认过期时间为3600秒
         """
         s = Serializer(current_app.config['SECRET_KEY'], expires_in=expiration)
-        token = s.dumps({'username': self.username}).decode('ascii')
+        token = s.dumps({'uid': str(self.id)}).decode('ascii')
         self.last_login_time = datetime.now()
         self.save()
         return token
@@ -94,7 +94,7 @@ class User(db.Document):
         except BadSignature:
             return None  # invalid token
         user = User.objects(
-            username=data['username'], is_deleted=False).first()
+            id=data['uid'], is_deleted=False).first()
         if user is None:
             return None
         g.current_user = user
@@ -123,7 +123,7 @@ class User(db.Document):
                 self.role = Role.objects.get(name='User')
 
     def set_password(self, password):
-        self.update(password_hash = generate_password_hash(password))
+        self.update(password_hash=generate_password_hash(password))
 
     def validate_password(self, password):
         return check_password_hash(self.password_hash, password)
@@ -164,10 +164,10 @@ class User(db.Document):
         if movie.rating_count == 0:
             movie.update(set__score=0)
 
-    def _parse_tags_to_tag_list(self,tags:str):
-        # 将以空格分割的标签 转换为标签对象   
-        tag_list=tags.split(' ')
-        tag_obj_list=[]
+    def _parse_tags_to_tag_list(self, tags: str):
+        # 将以空格分割的标签 转换为标签对象
+        tag_list = tags.split(' ')
+        tag_obj_list = []
         for tag in tag_list:
             try:
                 tag_obj_list.append(Tag(name=tag).save())
@@ -179,7 +179,7 @@ class User(db.Document):
         assert score in [x for x in range(0, 11)]
         assert category in [0, 1, 2]
         # 好恶心的代码,自己也不想看,反正测试通过了...
-        tags=self._parse_tags_to_tag_list(tags)
+        tags = self._parse_tags_to_tag_list(tags)
         if not movie.is_deleted:
             last_rating = Rating.objects(
                 user=self, movie=movie, is_deleted=False).first()
@@ -217,7 +217,7 @@ class User(db.Document):
                     if category == 2:
                         self.update(inc__collect_count=1)
                         movie.update(inc__collect_by_count=1)
-                 
+
                 last_rating.reload()
             else:
                 if score:
@@ -254,6 +254,9 @@ class User(db.Document):
         self._rating_on_movie(movie, category=2, score=score,
                               comment=comment, tags=tags)
 
+    def is_locked(self):
+        return self.role.name=='Locked'
+
     def interest_on_movie(self, movie):
         pass
 
@@ -269,14 +272,6 @@ class User(db.Document):
         else:
             return False
 
-    def lock(self):
-        self.lock = True
-        self.save()
-
-    def unlock(self):
-        self.lock = False
-        self.save()
-
     def check_permission(self, permission_name):
         if permission_name in self.role.permissions:
             return True
@@ -288,6 +283,7 @@ class User(db.Document):
         self.avatar_s = filenames[0]
         self.avatar_m = filenames[1]
         self.avatar_l = filenames[2]
+        self.avatar_raw=filenames[2]   # ?
 
     def delete_rating(self, movie):
         rating = Rating.objects(user=self, movie=movie,
@@ -310,9 +306,9 @@ class User(db.Document):
             self.reload()
             movie.reload()
             self._update_rating(movie)
-    
-    def is_like_rating(self,rating):
-        like=Like.objects(user=self,rating=rating).first()
+
+    def is_like_rating(self, rating):
+        like = Like.objects(user=self, rating=rating).first()
         if like:
             return True
         return False
@@ -337,8 +333,8 @@ class Celebrity(db.Document):
 
 
 class Tag(db.Document):
-    name = db.StringField(required=True,unique=True)
-    cate=db.IntField(default=0)  # 0-> user  1->system
+    name = db.StringField(required=True, unique=True)
+    cate = db.IntField(default=0)  # 0-> user  1->system
 
 
 class Movie(db.Document):
@@ -437,10 +433,10 @@ class Rating(db.Document):
             report = Report(user=user, rating=self)
             report.save()
             self.update(inc__report_count=1)
-    
+
     def delete_self(self):
-        movie=self.movie
-        user=self.user
+        movie = self.movie
+        user = self.user
         category = self.category
         score = self.score
         self.update(is_deleted=True)
@@ -485,7 +481,7 @@ class Report(db.Document):
 class Notification(db.Document):
     receiver = db.ReferenceField(User)
     is_read = db.BooleanField(default=False)
-    category = db.IntField()  # 0>follow 1>like 2>system
+    category = db.IntField()  # 0>friendship 1>rating 2>sys
     like_info = db.ReferenceField(Like)
     follow_info = db.ReferenceField(Follow)
     system_info = db.StringField()  # 系统通知消息
