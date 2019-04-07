@@ -64,6 +64,16 @@ class User(db.Document):
     signature = db.StringField()  # 个性签名
     douban_imported=db.BooleanField(default=False)
 
+    meta={
+        'indexes':[
+            {
+                'fields':['$username','$signature'],
+                'default_language':'english',
+                'weights':{'username':10,'signature':3}
+            }
+        ]
+    }
+
     def __repr__(self):
         super().__repr__()
         return '<%s: User object>' % self.username
@@ -103,10 +113,10 @@ class User(db.Document):
 
     @staticmethod
     def create_user(username, email, password):
-        """ 根据用户名,邮箱,密码创建新用户,返回创建结果 ``True`` or ``False``
+        """ 根据用户名,邮箱,密码创建新用户,返回创建结果 ``None`` or ``User``
         """
         if User.objects(username=username, is_deleted=False).first() or User.objects(email=email, is_deleted=False).first():
-            return False
+            return None
         try:
             user = User(username=username, email=email)
             user.set_password(password)
@@ -119,9 +129,9 @@ class User(db.Document):
         # 为新添加的用户设置默认角色
         if self.role == None:
             if self.email == current_app.config['ADMIN_EMAIL']:
-                self.role = Role.objects.get(name='Administrator')
+                self.role = Role.objects.get(name='Administrator').fitst()
             else:
-                self.role = Role.objects.get(name='User')
+                self.role = Role.objects.get(name='User').first()
 
     def set_password(self, password):
         self.update(password_hash=generate_password_hash(password))
@@ -167,13 +177,14 @@ class User(db.Document):
 
     def _parse_tags_to_tag_list(self, tags: str):
         # 将以空格分割的标签 转换为标签对象
-        tag_list = tags.split(' ')
         tag_obj_list = []
-        for tag in tag_list:
-            try:
-                tag_obj_list.append(Tag(name=tag).save())
-            except NotUniqueError:
-                tag_obj_list.append(Tag.objects(name=tag).first())
+        if tags:
+            tag_list = tags.split(' ')
+            for tag in tag_list:
+                try:
+                    tag_obj_list.append(Tag(name=tag).save())
+                except NotUniqueError:
+                    tag_obj_list.append(Tag.objects(name=tag).first())
         return tag_obj_list
 
     def _rating_on_movie(self, movie, category, score=0, comment=None, tags=''):
@@ -316,10 +327,10 @@ class User(db.Document):
 
 
 class Celebrity(db.Document):
-    douban_id = db.StringField()
+    douban_id = db.StringField(unique=True)
     imdb_id = db.StringField()
     name = db.StringField(required=True)
-    genger = db.StringField(required=True)
+    gender = db.StringField(required=True)
     avatar = db.StringField(deault='deault.png')
     created_time = db.DateTimeField(default=datetime.now)
     born_place = db.StringField()
@@ -328,13 +339,23 @@ class Celebrity(db.Document):
     aka = db.ListField()
     is_deleted = db.BooleanField(default=False)
 
+    meta={
+        'indexes':[
+            {
+                'fields':['$name'],
+                'default_language':'english',
+                'weights':{'name':10}
+            }
+        ]
+    }
+
     def delete_this(self):
         self.is_deleted = True
         self.save()
 
 
 class Tag(db.Document):
-    name = db.StringField(required=True, unique=True)
+    name = db.StringField(required=True)
     cate = db.IntField(default=0)  # 0-> user  1->system
 
 
@@ -362,6 +383,17 @@ class Movie(db.Document):
     casts = db.ListField(db.ReferenceField(Celebrity))
     is_deleted = db.BooleanField(default=False)
     created_time = db.DateTimeField(default=datetime.now)
+
+    meta={
+        'indexes':[
+            {
+                'fields':['$title','$summary'],
+                'default_language':'english',
+                'weights':{'title':10,'summary':3}
+            }
+        ]
+    }
+    
 
     def __repr__(self):
         super().__repr__()
@@ -487,3 +519,8 @@ class Notification(db.Document):
     follow_info = db.ReferenceField(Follow)
     system_info = db.StringField()  # 系统通知消息
     created_time = db.DateTimeField(default=datetime.now)
+
+
+class Cinema(db.Document):
+    cate=db.IntField(required=True)   #0->showing 1->coming
+    movie=db.ReferenceField(Movie)

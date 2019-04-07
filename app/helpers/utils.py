@@ -8,23 +8,25 @@ from app.models import User
 from app.helpers.redis_utils import add_email_task_to_redis, email_task
 
 
-def save_image(image_url, cate):
-    # 传入图片url 保存到本地
-    assert cate in ['avatar', 'celebrity', 'movie']
-    if cate == 'avatar':
-        base_path = os.path.join(current_app.config['UPLOAD_PATH'], 'avatar')
-
-    if cate == 'celebrity':
+def download_image_from_url(image_url):
+    """传入图片url 保存到本地
+    @param image_url:图片 url
+    @return `status_code`
+    """
+    if 'celebrity' in image_url:
         base_path = os.path.join(
             current_app.config['UPLOAD_PATH'], 'celebrity')
-
-    if cate == 'movie':
+    else:
         base_path = os.path.join(current_app.config['UPLOAD_PATH'], 'movie')
 
     file_name = image_url.split('/')[-1]
+    r=requests.get(image_url)
 
-    with open(os.path.join(base_path, file_name), 'wb') as file:
-        file.write(requests.get(image_url).content)
+    if r.status_code==200:
+        with open(os.path.join(base_path, file_name), 'wb') as file:
+            file.write(r.content)
+    return r.status_code
+    
 
 
 def query_by_id_list(document, id_list):

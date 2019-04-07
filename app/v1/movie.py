@@ -1,3 +1,4 @@
+import datetime
 import json
 import math
 
@@ -10,56 +11,48 @@ from mongoengine.queryset.visitor import Q
 from app.extensions import api, cache
 from app.helpers.redis_utils import *
 from app.helpers.utils import query_by_id_list
-from app.models import Movie, Rating, Tag, User
+from app.models import Movie, Rating, Tag, User,Cinema
 
 from .auth import auth, email_confirm_required, permission_required
 from .schemas import (items_schema, movie_schema, movie_summary_schema,
                       rating_schema)
 
 
-class Cinema(Resource):
-    #正在上映和即将上映的电影
-    def _parse_task(self, r_json):
-        # 将电影豆瓣id解析出,加入redis 任务队列
-        [add_download_task_to_redis(download_task(
-            subject['id'], 'movie', 2)) for subject in r_json['subjects']]
-
-    @cache.cached(timeout=60*60*24*3)
+class CinemaMovie(Resource):
+    """正在上映和即将上映的电影
+    """
+    @cache.cached(timeout=60*60*24*3,query_string=True)
     def get(self, coming_or_showing):
-        if coming_or_showing not in ['coming', 'showing']:
-            return{
-                "message": "parameter error"
-            }, 400
+        parser = reqparse.RequestParser()
+        parser.add_argument('page', default=1, type=int, location='args')
+        parser.add_argument('per_page', default=20, type=int, location='args')
+        args = parser.parse_args()
 
         if coming_or_showing == 'coming':
-            try:
-                r = requests.get(
-                    url='https://api.douban.com/v2/movie/coming_soon?count=100')
-                r_json = json.loads(r.text)
-                self._parse_task(r_json)
-                return r_json
-            except:
-                return{
-                    'message': 'internal error'
-                }, 500
+            pagination=Cinema.objects(cate=1).paginate(page=args['page'], per_page=args['per_page'])
 
-            # 添加log
+        elif coming_or_showing == 'showing':
+            pagination=Cinema.objects(cate=0).paginate(page=args['page'], per_page=args['per_page'])
+        
+        items = [movie_summary_schema(cinema.movie) for cinema in pagination.items]
 
-        if coming_or_showing == 'showing':
-            try:
-                r = requests.get(
-                    url='https://api.douban.com/v2/movie/in_theaters?count=100')
-                r_json = json.loads(r.text)
-                self._parse_task(r_json)
-                return r_json
-            except:
-                return{
-                    'message': 'internal error'
-                }, 500
-            # 添加log
+        prev = None
+        if pagination.has_prev:
+            prev = url_for(
+                '.cinemamovie', coming_or_showing=coming_or_showing, page=args['page']-1, per_page=args['per_page'], _external=True)
 
+        next = None
+        if pagination.has_next:
+            prev = url_for(
+                '.cinemamovie', coming_or_showing=coming_or_showing, page=args['page']+1, per_page=args['per_page'], _external=True)
 
-api.add_resource(Cinema, '/movie/cinema/<coming_or_showing>')
+        first = url_for(
+            '.cinemamovie', coming_or_showing=coming_or_showing, page=1, perpage=args['per_page'], _external=True)
+        last = prev = url_for(
+            '.cinemamovie', coming_or_showing=coming_or_showing, page=pagination.pages, perpage=args['per_page'], _external=True)
+        return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
+
+api.add_resource(CinemaMovie, '/movie/cinema/<any(coming,showing):coming_or_showing>')
 
 
 class Recommend(Resource):
@@ -87,8 +80,13 @@ class Leaderboard(Resource):
         if args['page'] <= 0:
             args['page'] = 1
 
-        id_items = redis_zset_paginate(
-            name='rank:'+time_range, page=args['page'], per_page=args['per_page'])
+        if time_range=='week':
+            keys=['rating:'+(today-datetime.timedelta(days=days)).strftime('%y%m%d') for days in range(1,8)]
+        if time_range=='month':
+            keys=['rating:'+(today-datetime.timedelta(days=days)).strftime('%y%m%d') for days in range(1,31)]
+
+        id_items = rank_redis_zset_paginate(
+            keys=keys, page=args['page'], per_page=args['per_page'])
         movie_objects_items = query_by_id_list(
             document=Movie, id_list=id_items)
 
@@ -327,27 +325,11 @@ class MovieInfo(Resource):
         return movie_schema(movie)
 
 
-api.add_resource(MovieInfo, '/movie/<movieid>')
-
-
-class MovieAction(Resource):
-
-    # @auth.login_required
-    # @permission_required('UPLOAD_MOVIE')
-    def post(self):
-        # 添加一个新的电影
-        return{
-            'message': 'add  movie here'
-        }
-    
     # @auth.login_required
     # @permission_required('DELETED_MOVIE')
-    def delete(self):
-        parser=reqparse.RequestParser()
-        parser.add_argument('movieid',required=True,location='form',type=str)
-        args=parser.parse_args()
+    def delete(self,movieid):
         try:
-            n=Movie.objects(id=args['movieid'],is_deleted=False).update(is_deleted=True)
+            n=Movie.objects(id=movieid,is_deleted=False).update(is_deleted=True)
         except ValidationError:
             return{
                 'message':'illegal movieid'
@@ -360,9 +342,23 @@ class MovieAction(Resource):
             'message':'movie not exist'
         }
 
+api.add_resource(MovieInfo, '/movie/<movieid>')
 
 
-api.add_resource(MovieAction, '/movie')
+# class MovieAction(Resource):
+
+#     # # @auth.login_required
+#     # # @permission_required('UPLOAD_MOVIE')
+#     # def post(self):
+#     #     # 添加一个新的电影
+#     #     return{
+#     #         'message': 'add  movie here'
+#     #     }
+    
+
+
+
+# api.add_resource(MovieAction, '/movie')
 
 
 class UserInterestMovie(Resource):

@@ -24,8 +24,9 @@ flask-restful = "*"
 flask-httpauth = "*"
 requests = "*"
 flask-redis = "*"
-sendgrid = "*"
 flask-apscheduler = "*"
+fake-useragent = "*"
+sendgrid = "==5.6.0"
 
 [requires]
 python_version = "3.6"

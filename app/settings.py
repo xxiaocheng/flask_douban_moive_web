@@ -49,11 +49,36 @@ class BaseConfig(object):
     # SCHEDULER_API_ENABLED = True
     JOBS=[
         {
+            'id': 'download_douban_user_info',
+            'func': 'app.tasks.download_tasks:get_douban_user_import_from_redis',
+            'trigger': 'interval',
+            'seconds': 60*60*24 # 一天执行一次
+        },
+        {
+            'id': 'download_celebrity',
+            'func': 'app.tasks.download_tasks:download_celebrity_from_redis',
+            'trigger': 'interval',
+            'seconds': 60*60*24 # 一天执行一次
+        },
+        {
+            'id': 'download_images',
+            'func': 'app.tasks.download_tasks:download_image_from_redis',
+            'trigger': 'interval',
+            'seconds': 60*60*24 # 一天执行一次
+        },
+        {
+            'id': 'download_cinema_movie',
+            'func': 'app.tasks.download_tasks:get_all_cinema_movie',
+            'trigger': 'interval',
+            'seconds': 60*60*24 # 一天执行一次
+        },
+        {
             'id': 'send_email_job',
             'func': 'app.tasks.email_tasks:handle_email',
             'trigger': 'interval',
             'seconds': 10
         }
+        
     ]
     SCHEDULER_EXECUTORS = {
         'default': {'type': 'threadpool', 'max_workers': 100}

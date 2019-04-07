@@ -83,7 +83,7 @@ class ReportRating(Resource):
         parser.add_argument('page', default=1, type=int, location='args')
         parser.add_argument('per_page', default=20, type=int, location='args')
         args = parser.parse_args()
-        paginate = Rating.objects(report_count__gt=0).order_by(
+        pagination = Rating.objects(report_count__gt=0).order_by(
             '-report_count').paginate()
 
         items = [rating_schema(rating)

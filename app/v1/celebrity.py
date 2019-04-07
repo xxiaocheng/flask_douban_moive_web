@@ -1,7 +1,7 @@
 from flask_restful import Resource
 
 from app.extensions import api
-from .schemas import celebrity_schema
+from .schemas import celebrity_schema,celebrity_summary_schema
 from app.models import Celebrity
 from .auth import permission_required,auth
 from mongoengine.errors import ValidationError
@@ -11,6 +11,9 @@ class CelebrityInfo(Resource):
     def get(self,id):
         """返回单个影人详细信息
         """
+        parser = reqparse.RequestParser()
+        parser.add_argument('cate',default='summary',choices=['summary','detail'],location='args')
+        args = parser.parse_args()
         try:
             celebrity=Celebrity.objects(id=id,is_deleted=False).first()
         except ValidationError:
@@ -19,10 +22,12 @@ class CelebrityInfo(Resource):
             },404
 
         if not celebrity:
+            
             return{
                 'message':'celebrity not found.'
             },404
-
+        if args.cate=='summary':
+             return celebrity_summary_schema(celebrity)
         return celebrity_schema(celebrity)
 
     # @auth.login_required
@@ -51,16 +56,16 @@ api.add_resource(CelebrityInfo ,'/celebrity/<id>')
 
 
 
-class AddCelebrity(Resource):
+# class AddCelebrity(Resource):
 
-    # @auth.login_required
-    # @permission_require('UPLOAD_CELEBRITY')
-    def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('role_id')
-        args = parser.parse_args()
+#     # @auth.login_required
+#     # @permission_require('UPLOAD_CELEBRITY')
+#     def post(self):
+#         parser = reqparse.RequestParser()
+#         parser.add_argument('')
+#         args = parser.parse_args()
         
 
 
-api.add_resource(AddCelebrity,'/celebrity')
+# api.add_resource(AddCelebrity,'/celebrity')
 

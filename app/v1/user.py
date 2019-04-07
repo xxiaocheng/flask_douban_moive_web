@@ -26,12 +26,13 @@ class UserRegister(Resource):
         parser.add_argument('password', location='form')
         args = parser.parse_args()
 
-        # 验证用户名和密码合法性
+        # 验证用户名,邮箱和密码合法性
         username_rex = re.compile('^[a-zA-Z0-9\_]{6,16}$')
         password_rex = re.compile('^[0-9a-zA-Z\_\.\!\@\#\$\%\^\&\*]{6,20}$')
-        if not (username_rex.match(args['username']) and password_rex.match(args['password'])):
+        email_rex=re.compile('[^@]+@[^@]+\.[^@]+')
+        if not (username_rex.match(args['username']) and password_rex.match(args['password']) and email_rex.match(args['email'])):
             return {
-                "message": "illegal username or password"
+                "message": "illegal username, password or email."
             }, 403
         user = User.create_user(
             username=args['username'], email=args['email'], password=args['password'])
@@ -385,4 +386,4 @@ class ImportDouban(Resource):
         }
 
 
-api.add_resource(ImportDouban,'/user/douban')
+api.add_resource(ImportDouban,'/douban_import')

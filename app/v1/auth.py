@@ -6,10 +6,10 @@ from flask_httpauth import HTTPTokenAuth
 from flask_restful import Resource, abort, reqparse
 
 from app.extensions import api
-from app.helpers.redis_utils import add_email_task_to_redis, email_task
 from app.helpers.utils import validate_email_confirm_token
 from app.models import User
 from app.settings import Operations
+from app.helpers.redis_utils import resent_confirm_email
 
 auth = HTTPTokenAuth(scheme='Bearer')
 
@@ -41,9 +41,6 @@ class AuthTokenAPI(Resource):
                 "message": "user not found"
             }, 404
         if not user.confirmed_email:
-            send_confirm_email_task = email_task(
-                user, cate=Operations.CONFIRM)
-            add_email_task_to_redis(send_confirm_email_task)
             return{
                 'message': 'email not confirmed,please check you email.'
             }, 403,
@@ -164,3 +161,35 @@ class account(Resource):
 
 
 api.add_resource(account, '/account/<type_name>')
+
+
+class ResentConfirmEmail(Resource):
+    def post(self):
+        """重新发送确认邮件 
+        """
+        parser = reqparse.RequestParser()
+        parser.add_argument('username', location='form')
+        parser.add_argument('password', location='form')
+        args = parser.parse_args()
+        user = User.objects(username=args['username']).first()
+        if user is None or not user.validate_password(args['password']):
+            return abort(http_status_code=400, message='Either the username or password was invalid.')
+        
+        if user.confirmed_email :
+            return {
+                'message':'your email had confirmed.'
+            },403
+
+        flag=resent_confirm_email(user)
+        if flag==-2:
+            return{
+                'message':'confirm email resent succeed.'
+            }
+        else:
+            return{
+                'message':'please resent in %d seconds.' %flag,
+                'seconds':flag
+            },403
+
+
+api.add_resource(ResentConfirmEmail,'/account/resent-confirm')
