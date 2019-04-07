@@ -3,7 +3,6 @@ import os
 from flask import Flask,jsonify
 
 from app.extensions import avatars, cache, cors, db,api,redis_store,scheduler
-from app.v1.photo import photo_bp
 from app.v1 import api_bp
 from app.settings import config
 
@@ -39,7 +38,6 @@ def register_blueprints(app):
     """Register the blueprints to the app.
     :param app: the instance of ``Flask``
     """
-    app.register_blueprint(photo_bp,url_prefix='/photo')
     app.register_blueprint(api_bp,url_prefix='/api/v1')
 
 def register_errorhandlers(app):

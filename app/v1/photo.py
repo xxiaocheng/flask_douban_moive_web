@@ -1,17 +1,20 @@
 from flask import send_from_directory,current_app
 from flask import Blueprint
+from app.extensions import api
+from flask_restful import Resource
 
-photo_bp=Blueprint('photo',__name__)
 
+class Photo(Resource):
 
-@photo_bp.route('/avatar/<path:filename>')
-def send_avatar_file(filename):
-    return send_from_directory(current_app.config['AVATAR_UPLOAD_PATH'],filename)
+    def get(self,cate,filename):
+        if cate=='avatar':
+            base_path=current_app.config['AVATAR_UPLOAD_PATH']
+        elif cate=='celebrity':
+            base_path=current_app.config['CELEBRITY_IMAGE_UPLOAD_PATH']
+        elif cate=='movie':
+            base_path=current_app.config['MOVIE_IMAGE_UPLOAD_PATH']
 
-@photo_bp.route('/celebrity/<path:filename>')
-def send_celebrity_file(filename):
-    return send_from_directory(current_app.config['CELEBRITY_IMAGE_UPLOAD_PATH'],filename)
+        return send_from_directory(base_path,filename)
+        
 
-@photo_bp.route('/movie/<path:filename>')
-def send_movie_file(filename):
-    return send_from_directory(current_app.config['MOVIE_IMAGE_UPLOAD_PATH'],filename)
+api.add_resource(Photo,'/photo/<any(avatar,celebrity,movie):cate>/<path:filename>')

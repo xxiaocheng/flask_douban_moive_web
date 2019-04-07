@@ -10,3 +10,4 @@ from .tag import *
 from .rating import *
 from .notification import *
 from .celebrity import *
+from .photo import *
