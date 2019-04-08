@@ -391,8 +391,16 @@ api.add_resource(ImportDouban,'/douban_import')
 
 class ValidUserExists(Resource):
 
-    def get(self,username):
-        user=User.objects(username=username,is_deleted=False).first()
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('username',location='args')
+        args = parser.parse_args()
+        if not args.username:
+            return {
+                'message':'username is None'
+            },400
+
+        user=User.objects(username=args.username,is_deleted=False).first()
         if user:
             return{
                 'message':'this username existed.'
@@ -401,4 +409,4 @@ class ValidUserExists(Resource):
             'message':'this username ok.'
         }
 
-api.add_resource(ValidUserExists,'/user/validate-username/<username>')
+api.add_resource(ValidUserExists,'/user/validate-username')
