@@ -19,7 +19,7 @@ def user_summary_schema(user):
     return{
         "name": user.username,
         "created_time": user.created_time.strftime("%Y-%m-%d %H:%M:%S"),
-        "avatar": url_for('photo.send_avatar_file', filename=user.avatar_raw, _external=True),
+        "avatar": url_for('api.photo',cate='avatar', filename=user.avatar_raw, _external=True),
         "signature": user.signature,
         "role": user.role.name.lower()
     }
@@ -30,7 +30,7 @@ def movie_summary_schema(movie):
         'id': str(movie.id),
         'title': movie.title,
         'subtype': movie.subtype,
-        'image': url_for('photo.send_movie_file', filename=movie.image, _external=True),
+        'image': url_for('api.photo',cate='movie' ,filename=movie.image, _external=True),
         'score': movie.score,
         'alt': current_app.config['WEB_BASE_URL']+'/movie/'+str(movie.id)
     }
@@ -40,7 +40,7 @@ def celebrity_summary_schema(celebrity):
     return{
         'id': str(celebrity.id),
         'name': celebrity.name,
-        'image': url_for('photo.send_celebrity_file', filename=celebrity.avatar, _external=True),
+        'image': url_for('api.photo', cate='celebrity',filename=celebrity.avatar, _external=True),
         'alt': current_app.config['WEB_BASE_URL']+'/celebrity/'+str(celebrity.id)
     }
 
@@ -56,7 +56,7 @@ def user_schema(user):
         "loc_name": user.location,
         "created_time": user.created_time.strftime("%Y-%m-%d %H:%M:%S"),
         "is_locked": user.is_locked(),
-        "avatar": url_for('photo.send_avatar_file', filename=user.avatar_raw, _external=True),
+        "avatar": url_for('api.photo', cate='avatar',filename=user.avatar_raw, _external=True),
         "signature": user.signature,
         "role": user.role.name.lower(),
         "do_count": user.do_count,
@@ -81,7 +81,7 @@ def movie_schema(movie):
         'do_by_count': movie.do_by_count,
         'collect_by_count': movie.collect_by_count,
         'year': movie.year,
-        'image': url_for('photo.send_movie_file', filename=movie.image, _external=True),
+        'image': url_for('api.photo',cate='movie', filename=movie.image, _external=True),
         'seasons_count': movie.seasons_count,
         'episodes_count': movie.episodes_count,
         'countries': movie.countries,
@@ -102,7 +102,7 @@ def celebrity_schema(celebrity):
     return{
         'id': str(celebrity.id),
         'name': celebrity.name,
-        'image': url_for('photo.send_celebrity_file', filename=celebrity.avatar, _external=True),
+        'image': url_for('api.photo',cate='celebrity', filename=celebrity.avatar, _external=True),
         'alt': current_app.config['WEB_BASE_URL']+'/celebrity/'+str(celebrity._id),
         'gender': celebrity.gender,
         'born_place': celebrity.born_place,
@@ -122,7 +122,7 @@ def rating_schema(rating):
         'tags': [tag.name for tag in rating.tags if rating.tags],
         'username': rating.user.username,
         'likecount': rating.like_count,
-        'useravatar': url_for('photo.send_avatar_file', filename=rating.user.avatar_l, _external=True),
+        'useravatar': url_for('api.photo', cate='avatar',filename=rating.user.avatar_l, _external=True),
         'id': str(rating.id)
     }
 
@@ -143,14 +143,14 @@ def notification_schema(notification):
 def _like_schema(like):
     return{
         'who_name':like.user.username, # 点赞你的人
-        'who_avatar':url_for('photo.send_avatar_file', filename=like.user.avatar_l, _external=True),
+        'who_avatar':url_for('api.photo',cate='avatar', filename=like.user.avatar_l, _external=True),
         'rating':rating_schema(like.rating)
     }
 
 def _follow_schema(follow):
     return{
         'who_name':follow.follower.username, # 点赞你的人
-        'who_avatar':url_for('photo.send_avatar_file', filename=follow.follower.avatar_l, _external=True),
+        'who_avatar':url_for('api.photo',cate='avatar', filename=follow.follower.avatar_l, _external=True),
     }
 
 def _sys_notifi_schema(system_info):
