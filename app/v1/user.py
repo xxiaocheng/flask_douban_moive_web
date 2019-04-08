@@ -387,3 +387,18 @@ class ImportDouban(Resource):
 
 
 api.add_resource(ImportDouban,'/douban_import')
+
+
+class ValidUserExists(Resource):
+
+    def get(self,username):
+        user=User.objects(username=username,is_deleted=False).first()
+        if user:
+            return{
+                'message':'this username existed.'
+            },403
+        return{
+            'message':'this username ok.'
+        }
+
+api.add_resource(ValidUserExists,'/user/validate-username/<username>')
