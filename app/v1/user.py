@@ -21,16 +21,16 @@ class UserRegister(Resource):
         """ 注册新用户
         """
         parser = reqparse.RequestParser()
-        parser.add_argument('username', location='form')
-        parser.add_argument('email', location='form')
-        parser.add_argument('password', location='form')
+        parser.add_argument('username',required=True,type=str, location='form')
+        parser.add_argument('email', required=True,type=str,location='form')
+        parser.add_argument('password', required=True,type=str,location='form')
         args = parser.parse_args()
 
         # 验证用户名,邮箱和密码合法性
         username_rex = re.compile('^[a-zA-Z0-9\_]{6,16}$')
         password_rex = re.compile('^[0-9a-zA-Z\_\.\!\@\#\$\%\^\&\*]{6,20}$')
         email_rex=re.compile('[^@]+@[^@]+\.[^@]+')
-        if not (username_rex.match(args['username']) and password_rex.match(args['password']) and email_rex.match(args['email'])):
+        if (not username_rex.match(args['username'])) or (not  password_rex.match(args['password'])) or (not  email_rex.match(args['email'])):
             return {
                 "message": "illegal username, password or email."
             }, 403
@@ -389,24 +389,31 @@ class ImportDouban(Resource):
 api.add_resource(ImportDouban,'/douban_import')
 
 
-class ValidUserExists(Resource):
+class ValidExists(Resource):
 
     def get(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('username',location='args')
+        parser.add_argument('type_name',choices=['username','email'],required=True,location='args')
+        parser.add_argument('value',required=True,location='args')
         args = parser.parse_args()
-        if not args.username:
-            return {
-                'message':'username is None'
-            },400
-
-        user=User.objects(username=args.username,is_deleted=False).first()
-        if user:
+        if args.type_name=='username':
+            user=User.objects(username=args.value,is_deleted=False).first()
+            if user:
+                return{
+                    'message':'this username existed.'
+                },403
             return{
-                'message':'this username existed.'
-            },403
-        return{
-            'message':'this username ok.'
-        }
+                'message':'this username ok.'
+            }
+        if args.type_name=='email':
+            user=User.objects(email=args.value,is_deleted=False).first()
+            if user:
+                return{
+                    'message':'this email existed.'
+                },403
+            return{
+                'message':'this email ok.'
+            }
+        
 
-api.add_resource(ValidUserExists,'/user/validate-username')
+api.add_resource(ValidExists,'/user/validate')

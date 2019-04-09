@@ -115,7 +115,7 @@ class User(db.Document):
     def create_user(username, email, password):
         """ 根据用户名,邮箱,密码创建新用户,返回创建结果 ``None`` or ``User``
         """
-        if User.objects(username=username, is_deleted=False).first() or User.objects(email=email, is_deleted=False).first():
+        if  User.objects(username=username, is_deleted=False).first() or User.objects(email=email, is_deleted=False).first():
             return None
         try:
             user = User(username=username, email=email)
@@ -129,9 +129,9 @@ class User(db.Document):
         # 为新添加的用户设置默认角色
         if self.role == None:
             if self.email == current_app.config['ADMIN_EMAIL']:
-                self.role = Role.objects.get(name='Administrator').fitst()
+                self.role = Role.objects(name='Administrator').first()
             else:
-                self.role = Role.objects.get(name='User').first()
+                self.role = Role.objects(name='User').first()
 
     def set_password(self, password):
         self.update(password_hash=generate_password_hash(password))
