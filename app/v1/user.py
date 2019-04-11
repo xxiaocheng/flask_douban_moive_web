@@ -245,11 +245,18 @@ class ResetPassword(Resource):
                 'message': 'no user found'
             }, 404
 
-        task = email_task(user=user, cate=Operations.RESET_PASSWORD)
-        add_email_task_to_redis(task)
-        return{
-            'message': 'the reset-password email will be  sent to user\'s email soon'
-        }
+        flag=send_email_limit(user,Operations.RESET_PASSWORD)
+
+        if flag==-2:
+            return{
+                'message':'请到 %s 查收邮件!'%user.email
+            }
+        else:
+            return{
+                'message':'请 %d 秒后重试' %flag,
+                'seconds':flag
+            },403
+
 
 
 api.add_resource(ResetPassword, '/user/reset-password')
@@ -262,12 +269,17 @@ class ChangeEmail(Resource):
     @auth.login_required
     def post(self):
         user = g.current_user
-        task = email_task(user=user, cate=Operations.CHANGE_EMAIL)
-        add_email_task_to_redis(task)
-        return{
-            'message': 'th link for change email had sent to your email.'
-        }
 
+        flag=send_email_limit(user,Operations.CHANGE_EMAIL)
+        if flag==-2:
+            return{
+                'message':'请到 %s 查收邮件!'%user.email
+            }
+        else:
+            return{
+                'message':'请 %d 秒后重试' %flag,
+                'seconds':flag
+            },403
 
 api.add_resource(ChangeEmail, '/user/change-email')
 

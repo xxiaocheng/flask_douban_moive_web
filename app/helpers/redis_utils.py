@@ -80,19 +80,28 @@ def rank_redis_zset_paginate(keys, page=1, per_page=20, desc=True, withscores=Fa
     return [value.decode() for value in redis_store.zrange(today_rank_key, start=start, end=end, desc=desc, withscores=withscores) if redis_store.zrange(today_rank_key, start=start, end=end, desc=desc, withscores=withscores)]
 
 
-def resent_confirm_email(user)->int:
-    key='confirmEmail:limit:'+user.email
+def send_email_limit(user,cate):
+    """
+    @param user : Object of `User`
+    @param cate : Operations
+    发送邮件前检测用户是否发送频繁
+    @return :-2  发送成功 ,>0 限制 多少秒后才可发送 , 默认限制5分钟发送一次 
+    """
+    if cate==Operations.CONFIRM:
+        key='confirmEmail:limit:'+user.email
+    elif cate==Operations.RESET_PASSWORD:
+        key='resetPasswordEmail:limit:'+user.email
+    elif cate==Operations.CHANGE_EMAIL:
+        key='changeEmail:limit:'+user.email
 
-    # ttl=-2 键值不存在,ttl=-1  未设置过期时间  ,ttl>0 键值过期时间
     ttl_time=redis_store.ttl(key)
     if ttl_time>0:
         return ttl_time
-
-    task=email_task(user,cate=Operations.CONFIRM)
+    task=email_task(user,cate=cate)
     add_email_task_to_redis(task)
     redis_store.set(key,1,5*60)  # 限制300's 发送一次
     
-    return -2  # 返回-2 为邮件发送成功 
+    return -2
 
 
 def had_downloaded(id,cate):

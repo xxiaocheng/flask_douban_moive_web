@@ -30,8 +30,8 @@ def _send_async_email(task):
             token = generate_email_confirm_token(
                 username=username, operation=Operations.RESET_PASSWORD)
             status_code = send_reset_password_email(token, to, username)
-    if status_code != 202:
-        redis_store.rpush(key, json.dumps(task_dict))
+    # if status_code != 202:
+    #     redis_store.rpush(key, json.dumps(task_dict))
 
 
 def handle_email():

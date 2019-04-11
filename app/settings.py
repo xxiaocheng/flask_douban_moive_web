@@ -6,7 +6,7 @@ basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 
 
 class Operations:
-    CONFIRM = 'confirm'
+    CONFIRM = 'confirm-email'
     RESET_PASSWORD = 'reset-password'
     CHANGE_EMAIL = 'change-email'
 
@@ -38,7 +38,7 @@ class BaseConfig(object):
     AVATARS_SAVE_PATH = os.path.join(UPLOAD_PATH, 'avatar')
     AVATARS_SIZE_TUPLE = (30, 100, 200)
     ADMIN_EMAIL=''
-    WEB_BASE_URL='http://www.baidu.com' # 前端部署服务器的url
+    WEB_BASE_URL='http://localhost:8080' # 前端部署服务器的url
 
     # sendgrid
     EMAIL_SENDER='noreply@miaomovie.com'

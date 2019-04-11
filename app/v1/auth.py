@@ -9,7 +9,7 @@ from app.extensions import api
 from app.helpers.utils import validate_email_confirm_token
 from app.models import User
 from app.settings import Operations
-from app.helpers.redis_utils import resent_confirm_email
+from app.helpers.redis_utils import send_email_limit
 
 auth = HTTPTokenAuth(scheme='Bearer')
 
@@ -34,15 +34,15 @@ class AuthTokenAPI(Resource):
 
         if user.is_locked():
             return{
-                "message": "user is locked"
+                "message": "用户被封禁,请联系管理员!"
             }, 403
         if user.is_deleted:
             return{
-                "message": "user not found"
+                "message": "用户不存在!"
             }, 404
         if not user.confirmed_email:
             return{
-                'message': 'email not confirmed,please check you email.'
+                'message': '请验证邮箱!'
             }, 403,
         expiration = current_app.config['EXPIRATION']
         token = user.generate_token(expiration=expiration)
@@ -115,12 +115,12 @@ class account(Resource):
                 token=args['token'], operation=Operations.CONFIRM)
             if flag:
                 return{
-                    'message': 'email had confirmed'
+                    'message': '您的账户已确认!'
                 }
             else:
                 return{
-                    'message': 'error'
-                },
+                    'message': '错误的 token!'
+                },403
         elif type_name == Operations.RESET_PASSWORD:
             parser.add_argument('newpassword', required=True, location='form')
             parser.add_argument('newpassword2', required=True, location='form')
@@ -177,17 +177,17 @@ class ResentConfirmEmail(Resource):
         
         if user.confirmed_email :
             return {
-                'message':'your email had confirmed.'
+                'message':'您的邮箱以及确认,无需再次确认!'
             },403
 
-        flag=resent_confirm_email(user)
+        flag=send_email_limit(user,Operations.CONFIRM)
         if flag==-2:
             return{
-                'message':'confirm email resent succeed.'
+                'message':'请到 %s 查收邮件!'%user.email
             }
         else:
             return{
-                'message':'please resent in %d seconds.' %flag,
+                'message':'请 %d 秒后重试' %flag,
                 'seconds':flag
             },403
 

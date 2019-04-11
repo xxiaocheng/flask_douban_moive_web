@@ -34,17 +34,18 @@ def _get_cinema_movie(url, cate):
     r = requests.get(url=url, headers=headers)
     r_json = json.loads(r.text)
     if cate == 'coming':
-    
-        for movie_obj in r_json.get('subjects'):
-            try:
-                if not redis_store.sismember('downloaded:movie',movie_obj.get('id')):
-                    download_movie(movie_obj.get('id'))
-                    time.sleep(5)
-                movie=Movie.objects(douban_id=movie_obj.get('id')).first()
+        subjects=r_json.get('subjects')
+        if subjects:
+            for movie_obj in subjects:
+                try:
+                    if not redis_store.sismember('downloaded:movie',movie_obj.get('id')):
+                        download_movie(movie_obj.get('id'))
+                        time.sleep(5)
+                    movie=Movie.objects(douban_id=movie_obj.get('id')).first()
 
-                Cinema.objects(cate=1,movie=movie).update(upsert=True,cate=1,movie=movie)
-            except:
-                error=True
+                    Cinema.objects(cate=1,movie=movie).update(upsert=True,cate=1,movie=movie)
+                except:
+                    error=True
 
     elif cate == 'showing':
     
