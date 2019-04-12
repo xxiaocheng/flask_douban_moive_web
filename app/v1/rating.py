@@ -12,7 +12,6 @@ class RatingAction(Resource):
 
     @auth.login_required
     def post(self, ratingid):
-        # 添加新的评论 ,或者更新已有的评论
         parser = reqparse.RequestParser()
         parser.add_argument('typename', choices=[
                             'like', 'unlike', 'report'], required=True, location='form', type=str)

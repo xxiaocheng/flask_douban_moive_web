@@ -21,7 +21,7 @@ from .schemas import (items_schema, movie_schema, movie_summary_schema,
 class CinemaMovie(Resource):
     """正在上映和即将上映的电影
     """
-    @cache.cached(timeout=60*60*24*3,query_string=True)
+    # @cache.cached(timeout=60*60*24*3,query_string=True)
     def get(self, coming_or_showing):
         parser = reqparse.RequestParser()
         parser.add_argument('page', default=1, type=int, location='args')
@@ -40,15 +40,13 @@ class CinemaMovie(Resource):
         if pagination.has_prev:
             prev = url_for(
                 '.cinemamovie', coming_or_showing=coming_or_showing, page=args['page']-1, per_page=args['per_page'], _external=True)
-
         next = None
         if pagination.has_next:
-            prev = url_for(
+            next = url_for(
                 '.cinemamovie', coming_or_showing=coming_or_showing, page=args['page']+1, per_page=args['per_page'], _external=True)
-
         first = url_for(
             '.cinemamovie', coming_or_showing=coming_or_showing, page=1, perpage=args['per_page'], _external=True)
-        last = prev = url_for(
+        last  = url_for(
             '.cinemamovie', coming_or_showing=coming_or_showing, page=pagination.pages, perpage=args['per_page'], _external=True)
         return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
 
@@ -148,12 +146,12 @@ class TypeRank(Resource):
 
         next = None
         if pagination.has_next:
-            prev = url_for(
+            next = url_for(
                 '.typerank', type_name=args['type_name'], page=args['page']+1, per_page=args['per_page'], _external=True)
 
         first = url_for(
             '.typerank', type_name=args['type_name'], page=1, perpage=args['per_page'], _external=True)
-        last = prev = url_for(
+        last  = url_for(
             '.typerank', type_name=args['type_name'], page=pagination.pages, perpage=args['per_page'], _external=True)
         return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
 
@@ -215,12 +213,12 @@ class UserMovie(Resource):
 
         next = None
         if pagination.has_next:
-            prev = url_for(
+            next = url_for(
                 '.usermovie', username=username, type_name=args['type_name'], page=args['page']+1, per_page=args['per_page'], _external=True)
 
         first = url_for(
             '.usermovie', username=username, type_name=args['type_name'], page=1, perpage=args['per_page'], _external=True)
-        last = prev = url_for(
+        last  = url_for(
             '.usermovie', username=username, type_name=args['type_name'], page=pagination.pages, perpage=args['per_page'], _external=True)
         return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
 
@@ -299,12 +297,12 @@ class ChoiceMovie(Resource):
 
         next = None
         if pagination.has_next:
-            prev = url_for(
+            next = url_for(
                 '.typerank', type_name=args['type_name'], page=args['page']+1, per_page=args['per_page'], _external=True)
 
         first = url_for(
             '.typerank', type_name=args['type_name'], page=1, perpage=args['per_page'], _external=True)
-        last = prev = url_for(
+        last  = url_for(
             '.typerank', type_name=args['type_name'], page=pagination.pages, perpage=args['per_page'], _external=True)
         return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
 
@@ -314,6 +312,7 @@ api.add_resource(ChoiceMovie, '/movie/choices')
 
 class MovieInfo(Resource):
 
+    @auth.login_required
     def get(self, movieid):
         # 返回此电影详细信息
         try:
@@ -362,12 +361,12 @@ api.add_resource(MovieInfo, '/movie/<movieid>')
 
 
 class UserInterestMovie(Resource):
-
+    # 用户对电影评价
     @auth.login_required
     def post(self, movieid):
         user = g.current_user
         parser = reqparse.RequestParser()
-        parser.add_argument('interest', type=str,
+        parser.add_argument('interest', type=str,choices=['wish','do','collect'],
                             required=True, location='form')
         parser.add_argument('score', type=int, default=0, location='form')
         parser.add_argument('tags', type=str, location='form')
@@ -451,12 +450,12 @@ class MovieRating(Resource):
 
         next = None
         if pagination.has_next:
-            prev = url_for(
+            next = url_for(
                 '.movierating', movieid=movieid, category=category, sort=args['sort'],  page=args['page']+1, per_page=args['per_page'], _external=True)
 
         first = url_for(
             '.movierating', movieid=movieid, category=category, sort=args['sort'], page=1, perpage=args['per_page'], _external=True)
-        last = prev = url_for(
+        last  = url_for(
             '.movierating', movieid=movieid, category=category, sort=args['sort'], page=pagination.pages, perpage=args['per_page'], _external=True)
         return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
 

@@ -40,25 +40,27 @@ def _get_cinema_movie(url, cate):
                 try:
                     if not redis_store.sismember('downloaded:movie',movie_obj.get('id')):
                         download_movie(movie_obj.get('id'))
-                        time.sleep(5)
+                        time.sleep(10)
                     movie=Movie.objects(douban_id=movie_obj.get('id')).first()
-
-                    Cinema.objects(cate=1,movie=movie).update(upsert=True,cate=1,movie=movie)
+                    if movie:
+                        Cinema.objects(cate=1,movie=movie).update(upsert=True,cate=1,movie=movie)
                 except:
                     error=True
 
     elif cate == 'showing':
-    
-        for movie_obj in r_json.get('subjects'):
-            try:
-                if not redis_store.sismember('downloaded:movie',movie_obj.get('id')):
-                    download_movie(movie_obj.get('id'))
-                    time.sleep(5)
-                movie=Movie.objects(douban_id=movie_obj.get('id')).first()
-
-                Cinema.objects(cate=0,movie=movie).update(upsert=True,cate=0,movie=movie)
-            except:
-                error=True
+        subjects=r_json.get('subjects')
+        if subjects:
+            print(len(subjects))
+            for movie_obj in subjects:
+                try:
+                    if not redis_store.sismember('downloaded:movie',movie_obj.get('id')):
+                        download_movie(movie_obj.get('id'))
+                        time.sleep(10)
+                    movie=Movie.objects(douban_id=movie_obj.get('id')).first()
+                    if movie:
+                        Cinema.objects(cate=0,movie=movie).update(upsert=True,cate=0,movie=movie)
+                except:
+                    error=True
 
     if error or r.status_code!=200:
         # 将失败信息转换成系统通知 ,并且通知管理员
@@ -82,7 +84,7 @@ def download_image_from_redis():
     """
     while redis_store.zcard('task:image'):
         image_url = redis_store.zrange(
-            'task:image', 1, 1, desc=True)[0].decode()
+            'task:image', 0, 0, desc=True)[0].decode()
         if not redis_store.sismember('downloaded:image', image_url):
             time.sleep(10)
             with redis_store.app.app_context():
@@ -94,6 +96,8 @@ def download_image_from_redis():
                 else:
                     message = '下载图片失败,请检查!'
                     sent_sys_message_to_admin(message)
+        else:
+            redis_store.zrem('task:image', image_url)
         
 
 
@@ -169,7 +173,7 @@ def parse_movie_json(r_json):
     for director in directors:
         directors_obj.append(Celebrity.objects(douban_id=director.get('id')).first())
     for genre in genres:
-        genres_obj.append(Tag.objects(name=genre).first())
+        genres_obj.append(Tag.objects(name=genre,cate=1).first())
 
     image_url=r_json.get('images').get('large')
     image=image_url.split('/')[-1]

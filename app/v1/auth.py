@@ -122,39 +122,35 @@ class account(Resource):
                     'message': '错误的 token!'
                 },403
         elif type_name == Operations.RESET_PASSWORD:
-            parser.add_argument('newpassword', required=True, location='form')
-            parser.add_argument('newpassword2', required=True, location='form')
+            parser.add_argument('password', required=True, location='form')
             args = parser.parse_args()
-            if args['newpassword'] != args['newpassword2']:
-                return{
-                    'message': 'two password not equal'
-                }, 403
 
             password_rex = re.compile(
                 '^[0-9a-zA-Z\_\.\!\@\#\$\%\^\&\*]{6,20}$')
-            if not password_rex.match(args['newpassword']):
+            if not password_rex.match(args['password']):
                 return{
-                    'message': 'illegal password'
+                    'message': '密码不合法!'
                 }, 403
 
-            if not validate_email_confirm_token(token=args['token'], operation=Operations.RESET_PASSWORD, new_password=args['newpassword']):
+            if  validate_email_confirm_token(token=args['token'], operation=Operations.RESET_PASSWORD,new_password=args.password):
                 return{
-                    'message': 'token error'
-                }, 404
+                    'message': '密码已重置!'
+                }
+                
             else:
                 return{
-                    'message': 'password had changed'
-                }
+                    'message': '错误的 token!'
+                }, 404
         elif type_name == Operations.CHANGE_EMAIL:
             parser.add_argument('newemail', required=True, location='form')
             args = parser.parse_args()
             if not validate_email_confirm_token(token=args['token'], operation=Operations.CHANGE_EMAIL, new_email=args['newemail']):
                 return{
-                    'message': 'error'
+                    'message': '错误的token!'
                 }, 400
             else:
                 return{
-                    'message': 'email had changed, please check you new email to confirm it .'
+                    'message': '邮箱已更换, 请确认新的邮箱!'
                 }
         else:
             abort(404)
@@ -177,7 +173,7 @@ class ResentConfirmEmail(Resource):
         
         if user.confirmed_email :
             return {
-                'message':'您的邮箱以及确认,无需再次确认!'
+                'message':'您的邮箱已经确认,无需再次确认!'
             },403
 
         flag=send_email_limit(user,Operations.CONFIRM)
@@ -192,4 +188,87 @@ class ResentConfirmEmail(Resource):
             },403
 
 
-api.add_resource(ResentConfirmEmail,'/account/resent-confirm')
+api.add_resource(ResentConfirmEmail,'/auth/resent-confirm')
+
+
+
+
+class ChangePassword(Resource):
+
+    @auth.login_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('oldpassword', required=True, location='form')
+        parser.add_argument('newpassword', required=True, location='form')
+        parser.add_argument('newpassword2', required=True, location='form')
+        args = parser.parse_args()
+        user = g.current_user
+        if args['newpassword'] != args['newpassword2']:
+            return{
+                'message': 'two password not equal'
+            }, 403
+        if user.validate_password(args['oldpassword']):
+            user.set_password(args['newpassword'])
+            return{
+                'message': 'change password successfuly'
+            }
+        return {
+            'message': 'password check failed'
+        }, 403
+
+
+api.add_resource(ChangePassword, '/auth/change-password')
+
+
+class ResetPassword(Resource):
+    """重置密码
+    """
+
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('email', required=True, location='form')
+        args = parser.parse_args()
+
+        user = User.objects(email=args['email'], is_deleted=False).first()
+        if not user:
+            return{
+                'message': '邮箱不存在'
+            }, 404
+
+        flag=send_email_limit(user,Operations.RESET_PASSWORD)
+
+        if flag==-2:
+            return{
+                'message':'请到 %s 查收邮件!'%user.email
+            }
+        else:
+            return{
+                'message':'请 %d 秒后重试' %flag,
+                'seconds':flag
+            },403
+
+
+
+api.add_resource(ResetPassword, '/auth/reset-password')
+
+
+class ChangeEmail(Resource):
+    """
+    更改邮箱
+    """
+    @auth.login_required
+    def post(self):
+        user = g.current_user
+
+        flag=send_email_limit(user,Operations.CHANGE_EMAIL)
+        if flag==-2:
+            return{
+                'message':'请到 %s 查收邮件!'%user.email
+            }
+        else:
+            return{
+                'message':'请 %d 秒后重试' %flag,
+                'seconds':flag
+            },403
+
+api.add_resource(ChangeEmail, '/auth/change-email')

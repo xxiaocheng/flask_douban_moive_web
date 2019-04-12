@@ -22,18 +22,18 @@ def send_email(subject,to,html_body):
 
 
 def send_confirm_email(token, to,username):
-    url_to=current_app.config['WEB_BASE_URL']+'/account/confirm-email?token='+token
+    url_to=current_app.config['WEB_BASE_URL']+'/auth/confirm-email?token='+token
     response= send_email(subject='确认邮箱', to=to , html_body=render_template('emails/confirm.html', username=username, url_to=url_to))
     return response.status_code
 
 
 def send_reset_password_email(token,to,username):
-    url_to=current_app.config['WEB_BASE_URL']+'/account/change-password?token='+token
-    response=send_email(subject='请更改密码', to=to, html_body=render_template('emails/reset_password.html', username=username, url_to=url_to))
+    url_to=current_app.config['WEB_BASE_URL']+'/auth/reset-password?token='+token
+    response=send_email(subject='请重置密码', to=to, html_body=render_template('emails/reset_password.html', username=username, url_to=url_to))
     return response.status_code
 
 def send_change_email_email(token, to,username):
-    url_to=current_app.config['WEB_BASE_URL']+'/account/change-email?token='+token
+    url_to=current_app.config['WEB_BASE_URL']+'/auth/change-email?token='+token
     response=send_email(subject='更改绑定邮箱', to=to, html_body=render_template('emails/change_email.html', username=username, url_to=url_to))
     return response.status_code
 
