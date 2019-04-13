@@ -40,7 +40,7 @@ def _get_cinema_movie(url, cate):
                 try:
                     if not redis_store.sismember('downloaded:movie',movie_obj.get('id')):
                         download_movie(movie_obj.get('id'))
-                        time.sleep(10)
+                        time.sleep(60)
                     movie=Movie.objects(douban_id=movie_obj.get('id')).first()
                     if movie:
                         Cinema.objects(cate=1,movie=movie).update(upsert=True,cate=1,movie=movie)
@@ -50,12 +50,11 @@ def _get_cinema_movie(url, cate):
     elif cate == 'showing':
         subjects=r_json.get('subjects')
         if subjects:
-            print(len(subjects))
             for movie_obj in subjects:
                 try:
                     if not redis_store.sismember('downloaded:movie',movie_obj.get('id')):
                         download_movie(movie_obj.get('id'))
-                        time.sleep(10)
+                        time.sleep(60)
                     movie=Movie.objects(douban_id=movie_obj.get('id')).first()
                     if movie:
                         Cinema.objects(cate=0,movie=movie).update(upsert=True,cate=0,movie=movie)

@@ -1,6 +1,6 @@
 from flask import current_app, g, url_for
 
-from app.models import Movie
+from app.models import Movie,Rating
 
 
 def items_schema(items, prev, next, first, last, total, pages):
@@ -72,6 +72,21 @@ def user_schema(user):
 
 
 def movie_schema(movie):
+    user=g.current_user
+    me2movie={
+        'cate':-1
+    }
+    if user:
+        rating=Rating.objects(user=user,movie=movie,is_deleted=False).first()
+        if rating:
+            me2movie={
+                'ratingId':str(rating.id),
+                'cate':rating.category,
+                'score':rating.score,
+                'tags':[tag.name for tag in rating.tags if rating.tags],
+                'comment':rating.comment,
+                'time':rating.rating_time.strftime("%Y-%m-%d %H:%M:%S")
+            }
     return{
         'id': str(movie.id),
         'douban_id': movie.douban_id,
@@ -94,7 +109,8 @@ def movie_schema(movie):
         'rating_count': movie.rating_count,
         'directors': [celebrity_summary_schema(celebrity) for celebrity in movie.directors if movie.directors],
         'casts': [celebrity_summary_schema(cast) for cast in movie.casts if movie.casts],
-        'alt': current_app.config['WEB_BASE_URL']+'/movie/'+str(movie.id)
+        'alt': current_app.config['WEB_BASE_URL']+'/movie/'+str(movie.id),
+        'me2movie':me2movie
     }
 
 

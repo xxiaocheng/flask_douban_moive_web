@@ -167,7 +167,7 @@ class User(db.Document):
 
     def _update_rating(self, movie):
         # 在用户对电影进行评价后或者更改评价后 更新电影评分,0 分计入评分
-        score_sum = Rating.objects(movie=movie).sum('score')
+        score_sum = Rating.objects(movie=movie,is_deleted=False).sum('score')
 
         if movie.rating_count > 0:
             new_score = score_sum/movie.rating_count

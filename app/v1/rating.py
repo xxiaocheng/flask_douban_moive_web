@@ -61,7 +61,7 @@ class RatingAction(Resource):
         if rating.user == user or user.check_permission("HANDLE_REPORT"):
             rating.delete_self()
             return{
-                'message': 'rating has deleted'
+                'message': '评价已删除!'
             }
         else:
             return {

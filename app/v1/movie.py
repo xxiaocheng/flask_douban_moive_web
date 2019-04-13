@@ -321,7 +321,12 @@ class MovieInfo(Resource):
             return{
                 'message':'movie not found'
             },404
-        return movie_schema(movie)
+        if movie:
+            return movie_schema(movie)
+        else:
+            return {
+                'message':'movie not found'
+            },404
 
 
     # @auth.login_required
