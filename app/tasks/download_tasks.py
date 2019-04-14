@@ -38,9 +38,10 @@ def _get_cinema_movie(url, cate):
         if subjects:
             for movie_obj in subjects:
                 try:
+                    print(movie_obj.get('id'))
                     if not redis_store.sismember('downloaded:movie',movie_obj.get('id')):
                         download_movie(movie_obj.get('id'))
-                        time.sleep(60)
+                        time.sleep(10)
                     movie=Movie.objects(douban_id=movie_obj.get('id')).first()
                     if movie:
                         Cinema.objects(cate=1,movie=movie).update(upsert=True,cate=1,movie=movie)
@@ -54,7 +55,7 @@ def _get_cinema_movie(url, cate):
                 try:
                     if not redis_store.sismember('downloaded:movie',movie_obj.get('id')):
                         download_movie(movie_obj.get('id'))
-                        time.sleep(60)
+                        time.sleep(10)
                     movie=Movie.objects(douban_id=movie_obj.get('id')).first()
                     if movie:
                         Cinema.objects(cate=0,movie=movie).update(upsert=True,cate=0,movie=movie)
@@ -71,8 +72,8 @@ def get_all_cinema_movie():
     """设置定时任务
     """
 
-    coming_url = 'https://api.douban.com/v2/movie/coming_soon?count=100'
-    showing_url = 'https://api.douban.com/v2/movie/in_theaters?count=100'
+    coming_url = 'https://api.douban.com/v2/movie/coming_soon?count=99'
+    showing_url = 'https://api.douban.com/v2/movie/in_theaters?count=99'
 
     _get_cinema_movie(url=coming_url, cate='coming')
     _get_cinema_movie(url=showing_url, cate='showing')

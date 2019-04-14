@@ -70,7 +70,7 @@ class BaseConfig(object):
             'id': 'download_cinema_movie',
             'func': 'app.tasks.download_tasks:get_all_cinema_movie',
             'trigger': 'interval',
-            'seconds': 10 # 一天执行一次
+            'seconds': 60*60*24 # 一天执行一次
         },
         {
             'id': 'send_email_job',

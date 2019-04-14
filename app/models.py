@@ -462,10 +462,13 @@ class Rating(db.Document):
             self.update(dec__like_count=1)
 
     def report_by(self, user):
-        if not Report.objects(user=user, rating=self) and self.user != user:
+        if not Report.objects(user=user, rating=self)  :
             report = Report(user=user, rating=self)
             report.save()
             self.update(inc__report_count=1)
+            return True
+        else:
+            return False
 
     def delete_self(self):
         movie = self.movie

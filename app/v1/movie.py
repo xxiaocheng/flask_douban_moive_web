@@ -410,6 +410,7 @@ api.add_resource(UserInterestMovie, '/movie/<movieid>/interest')
 
 class MovieRating(Resource):
 
+    @auth.login_required
     def get(self, movieid, category):
         parser = reqparse.RequestParser()
         parser.add_argument(
@@ -465,4 +466,4 @@ class MovieRating(Resource):
         return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
 
 
-api.add_resource(MovieRating, '/movie/<movieid>/<category>')
+api.add_resource(MovieRating, '/movie/<movieid>/rating/<category>')

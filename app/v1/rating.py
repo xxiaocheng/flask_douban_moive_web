@@ -6,7 +6,7 @@ from app.models import Rating
 
 from .auth import auth, permission_required
 from .schemas import items_schema, rating_schema
-
+from mongoengine.errors import ValidationError
 
 class RatingAction(Resource):
 
@@ -19,40 +19,54 @@ class RatingAction(Resource):
         rating = Rating.objects(id=ratingid, is_deleted=False).first()
         if not rating:
             return{
-                'message': 'rating not found'
+                'message': '评论未找到!'
             }, 404
         user = g.current_user
         if args['typename'] == 'like':
             if user.is_like_rating(rating):
                 return{
-                    'message': 'you already like this rating'
+                    'message': '你已经点赞过!'
                 }, 403
             else:
                 rating.like_by(user)
                 return{
-                    'message': 'like successfuly'
+                    'message': '点赞成功!'
                 }
         if args['typename'] == 'unlike':
             if not user.is_like_rating(rating):
                 return{
-                    'message': 'you not like this rating before'
+                    'message': '取消点赞失败!'
                 }, 403
             else:
                 rating.unlike_by(user)
                 return{
-                    'message': 'unlike'
+                    'message': '取消点赞成功!'
                 }
         if args['typename'] == 'report':
-            rating.report_by(user)
-            return{
-                'message': 'succeed'
-            }
+            if rating.user==user:
+                return{
+                    'message':'不能举报自己的评论!'
+                },403
+            f=rating.report_by(user)
+            if f:
+                return{
+                    'message': '举报成功!'
+                }
+            else:
+                return {
+                    'message':'你已经举报过该评论!'
+                }
 
     @auth.login_required
     def delete(self, ratingid):
         # 删除评分信息 ,只有本人或者具有管理评分权限的管理员可以删除
         user = g.current_user
-        rating = Rating.objects(id=ratingid, is_deleted=False).first()
+        try:
+            rating = Rating.objects(id=ratingid, is_deleted=False).first()
+        except ValidationError:
+            return{
+                'message': 'rating not found'
+            },
         if not rating:
             return{
                 'message': 'rating not found'

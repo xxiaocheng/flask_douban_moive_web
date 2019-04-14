@@ -1,6 +1,6 @@
 from flask import current_app, g, url_for
 
-from app.models import Movie,Rating
+from app.models import Movie,Rating,Like
 
 
 def items_schema(items, prev, next, first, last, total, pages):
@@ -131,7 +131,7 @@ def celebrity_schema(celebrity):
 
 
 def rating_schema(rating):
-    return{
+    schema={
         'cate': rating.category,
         'score': rating.score,
         'time': rating.rating_time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -139,8 +139,18 @@ def rating_schema(rating):
         'username': rating.user.username,
         'likecount': rating.like_count,
         'useravatar': url_for('api.photo', cate='avatar',filename=rating.user.avatar_l, _external=True),
-        'id': str(rating.id)
+        'id': str(rating.id),
+        'comment':rating.comment,
+        'me2rating':'unlike'
     }
+
+    user=g.current_user
+    like=Like.objects(rating=rating,user=user).first()
+    if like:
+        schema['me2rating']='like'
+    else:
+        schema['me2rating']='unlike'
+    return schema
 
 
 def notification_schema(notification):
