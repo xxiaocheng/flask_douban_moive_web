@@ -88,7 +88,7 @@ class User(db.Document):
         """根据用户id生成带有过期时间的token,默认过期时间为3600秒
         """
         s = Serializer(current_app.config['SECRET_KEY'], expires_in=expiration)
-        token = s.dumps({'uid': str(self.id)}).decode('ascii')
+        token = s.dumps({'uid': str(self.id),'password':str(self.password_hash)}).decode('ascii')
         self.last_login_time = datetime.now()
         self.save()
         return token
@@ -108,8 +108,16 @@ class User(db.Document):
             id=data['uid'], is_deleted=False).first()
         if user is None:
             return None
-        g.current_user = user
-        return user
+        password=data.get('password')
+        print(password)
+        if password:
+            if user.password_hash==password:
+                g.current_user = user
+                return user
+            else:
+                return None
+        else:
+            return None
 
     @staticmethod
     def create_user(username, email, password):
