@@ -65,7 +65,7 @@ def user_schema(user):
         "followers_count": user.followers_count,
         "followings_count": user.followings_count,
         "followed": user.is_follow(g.current_user),  # 本人被ta被关注
-        "follow": user.is_follow(g.current_user),  # 本人关注ta
+        "follow": user.is_follow_by(g.current_user),  # 本人关注ta
         "alt": current_app.config['WEB_BASE_URL']+'/people/'+user.username, #个人主页
         "last_login": last_login
     }

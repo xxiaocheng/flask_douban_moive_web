@@ -109,7 +109,6 @@ class User(db.Document):
         if user is None:
             return None
         password=data.get('password')
-        print(password)
         if password:
             if user.password_hash==password:
                 g.current_user = user
@@ -158,6 +157,8 @@ class User(db.Document):
                 self.update(inc__followings_count=1)
                 user.update(inc__followers_count=1)
                 return True
+            else:
+                return False
         return False
 
     def unfollow(self, user):
@@ -165,12 +166,14 @@ class User(db.Document):
         if self.username != user.username:
             if user.is_follow_by(self):
                 follow_ob = Follow.objects(
-                    followed=user, follower=self).first()
+                    followed=user, follower=self,is_deleted=False).first()
                 follow_ob.update(is_deleted=True)
                 Notification.objects(follow_info=follow_ob).delete()
                 self.update(dec__followings_count=1)
                 user.update(dec__followers_count=1)
                 return True
+            else:
+                return False
         return False
 
     def _update_rating(self, movie):
@@ -281,13 +284,17 @@ class User(db.Document):
         pass
 
     def is_follow(self, user):
-        if Follow.objects(followed=user, follower=self, is_deleted=False):
+        """判断 `self` 是否关注 `user`
+        """
+        if Follow.objects(followed=user, follower=self, is_deleted=False).first():
             return True
         else:
             return False
 
     def is_follow_by(self, user):
-        if Follow.objects(followed=self, follower=user, is_deleted=False):
+        """判断 `self` 是否被 `user` 关注 
+        """
+        if Follow.objects(followed=self, follower=user, is_deleted=False).first():
             return True
         else:
             return False

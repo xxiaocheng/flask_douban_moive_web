@@ -80,21 +80,32 @@ class UserRegister(Resource):
         parser.add_argument('signature', location='form')
         args = parser.parse_args()
         user = g.current_user
+        username_modified=location_modified=signature_modified=False
         if args.username:
-            if User.objects(username=args.username, is_deleted=False).first():
-                username_modified = False
-            else:
-                user.update(username=args.username)
-                username_modified = True
+            username_rex = re.compile('^[a-zA-Z0-9\_]{6,16}$')
+            if username_rex.match(args['username']):
+                if User.objects(username=args.username, is_deleted=False).first():
+                    username_modified = False
+                else:
+                    user.update(username=args.username)
+                    username_modified = True
+
+
         if args.location:
-            user.update(location=args.location)
+            if len(args['location'])<=10:
+                user.update(location=args.location)
+                location_modified=True
+
         if args.signature:
-            user.update(signature=args.signature)
+            if len(args['signature'])<=44:
+                user.update(signature=args.signature)
+                signature_modified=True
 
         return{
-            'message': 'profile had changed.'
+            'username_modified':username_modified,
+            'location_modified':location_modified,
+            'signature_modiied':signature_modified
         }
-
 
 api.add_resource(UserRegister, '/user')
 
@@ -181,7 +192,7 @@ class FriendShip(Resource):
             username=args['username'], is_deleted=False).first()
         if not user:
             return{
-                "message": "user not fount"
+                "message": "user not found"
             }, 400
 
         if follow_or_unfollow.lower() == 'follow':
