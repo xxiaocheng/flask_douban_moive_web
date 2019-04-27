@@ -16,7 +16,12 @@ class RatingAction(Resource):
         parser.add_argument('typename', choices=[
                             'like', 'unlike', 'report'], required=True, location='form', type=str)
         args = parser.parse_args()
-        rating = Rating.objects(id=ratingid, is_deleted=False).first()
+        try:
+            rating = Rating.objects(id=ratingid, is_deleted=False).first()
+        except ValidationError:
+            return{
+                "message":'评论未找到!'
+            },404
         if not rating:
             return{
                 'message': '评论未找到!'

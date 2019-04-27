@@ -1,4 +1,4 @@
-from flask_restful import Resource
+from flask_restful import Resource,reqparse
 
 from app.extensions import api
 from .schemas import celebrity_schema,celebrity_summary_schema
@@ -12,7 +12,7 @@ class CelebrityInfo(Resource):
         """返回单个影人详细信息
         """
         parser = reqparse.RequestParser()
-        parser.add_argument('cate',default='summary',choices=['summary','detail'],location='args')
+        parser.add_argument('cate',default='detail',choices=['summary','detail'],location='args')
         args = parser.parse_args()
         try:
             celebrity=Celebrity.objects(id=id,is_deleted=False).first()

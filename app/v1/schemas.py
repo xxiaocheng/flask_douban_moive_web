@@ -27,6 +27,7 @@ def user_summary_schema(user):
 
 def movie_summary_schema(movie):
     return{
+        'year': movie.year,
         'id': str(movie.id),
         'title': movie.title,
         'subtype': movie.subtype,
@@ -119,7 +120,7 @@ def celebrity_schema(celebrity):
         'id': str(celebrity.id),
         'name': celebrity.name,
         'image': url_for('api.photo',cate='celebrity', filename=celebrity.avatar, _external=True),
-        'alt': current_app.config['WEB_BASE_URL']+'/celebrity/'+str(celebrity._id),
+        'alt': current_app.config['WEB_BASE_URL']+'/celebrity/'+str(celebrity.id),
         'gender': celebrity.gender,
         'born_place': celebrity.born_place,
         'aka_en': celebrity.aka_en,
@@ -151,6 +152,17 @@ def rating_schema(rating):
     else:
         schema['me2rating']='unlike'
     return schema
+
+def rating_schema_on_user(rating):
+    
+    return{
+        'score':rating.score,
+        'time': rating.rating_time.strftime("%Y-%m-%d %H:%M:%S"),
+        'tags': [tag.name for tag in rating.tags if rating.tags],
+        'id':str(rating.id),
+        'comment':rating.comment,
+        'movie':movie_summary_schema(rating.movie)
+    }
 
 
 def notification_schema(notification):

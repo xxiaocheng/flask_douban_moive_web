@@ -15,7 +15,7 @@ from app.models import Movie, Rating, Tag, User,Cinema
 
 from .auth import auth, email_confirm_required, permission_required
 from .schemas import (items_schema, movie_schema, movie_summary_schema,
-                      rating_schema)
+                      rating_schema,rating_schema_on_user)
 
 
 class CinemaMovie(Resource):
@@ -160,6 +160,8 @@ api.add_resource(TypeRank, '/movie/typerank')
 
 
 class UserMovie(Resource):
+
+    @auth.login_required
     def get(self, username):
         user = User.objects(username=username, is_deleted=False).first()
         if not user:
@@ -203,7 +205,7 @@ class UserMovie(Resource):
             pagination = Rating.objects(user=user, category=2, is_deleted=False).paginate(
                 page=args['page'], per_page=args['per_page'])
 
-        items = [movie_summary_schema(rating.movie)
+        items = [rating_schema_on_user(rating)
                  for rating in pagination.items]
 
         prev = None
@@ -223,7 +225,7 @@ class UserMovie(Resource):
         return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
 
 
-api.add_resource(UserMovie, '/movie/by/<username>')
+api.add_resource(UserMovie, '/user/<username>/movie')
 
 
 class MineMovie(Resource):
@@ -388,6 +390,19 @@ class UserInterestMovie(Resource):
             return{
                 'message': 'movie not found'
             },404
+        
+        if len(args.comment)>100:
+            return {
+                'message':'评论长度不能超过100个字符!'
+            },403
+        if args.score>10 or args.score<0:
+            return{
+                'message':'评分必须在 1-10 之间!'
+            },403
+        if len(args.tags.split(' '))>10:
+            return{
+                'message':'最多可以添加10个标签!'
+            },403
 
         if args['interest'] == 'wish':
             user.wish_movie(

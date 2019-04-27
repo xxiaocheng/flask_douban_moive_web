@@ -1,6 +1,8 @@
 import json
 import time
 
+from datetime import datetime
+
 import requests
 from fake_useragent import UserAgent
 from flask import current_app
@@ -122,7 +124,7 @@ def download_celebrity_from_redis():
                 avatar_url, cate='image')  # 将下载头像的任务添加到redis队列中
             add_download_task_to_redis(image_task)
             Celebrity.objects(douban_id=celebrity_id).update(upsert=True,douban_id=celebrity_id, name=r_json.get('name', None), gender=r_json.get('gender', None), avatar=avatar, born_place=r_json.get(
-                'born_place'), aka_en=r_json.get('aka_en'), name_en=r_json.get('name_en'), aka=r_json.get('aka'))
+                'born_place'), aka_en=r_json.get('aka_en'), name_en=r_json.get('name_en'), aka=r_json.get('aka'),is_deleted=False,created_time=datetime.now())
             redis_store.zrem('task:celebrity', celebrity_id)
             # 将已经下载过的资料存储到redis中,避免重复下载
             had_downloaded(celebrity_id, cate='celebrity')
