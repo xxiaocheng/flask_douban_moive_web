@@ -375,7 +375,7 @@ class Tag(db.Document):
 
 
 class Movie(db.Document):
-    douban_id = db.StringField()
+    douban_id = db.StringField(unique=True)
     imdb_id = db.StringField()
     title = db.StringField(required=True)
     subtype = db.StringField(required=True)

@@ -73,6 +73,15 @@ def user_schema(user):
 
 
 def movie_schema(movie):
+
+    try:
+        directors=[celebrity_summary_schema(celebrity) for celebrity in movie.directors if movie.directors]
+    except:
+        directors=[]
+    try:
+        casts=[celebrity_summary_schema(cast) for cast in movie.casts if movie.casts],
+    except:
+        casts=[]
     user=g.current_user
     me2movie={
         'cate':-1
@@ -108,8 +117,8 @@ def movie_schema(movie):
         'aka': movie.aka,
         'score': movie.score,
         'rating_count': movie.rating_count,
-        'directors': [celebrity_summary_schema(celebrity) for celebrity in movie.directors if movie.directors],
-        'casts': [celebrity_summary_schema(cast) for cast in movie.casts if movie.casts],
+        'directors': directors,
+        'casts': casts,
         'alt': current_app.config['WEB_BASE_URL']+'/movie/'+str(movie.id),
         'me2movie':me2movie
     }
@@ -126,6 +135,7 @@ def celebrity_schema(celebrity):
         'aka_en': celebrity.aka_en,
         'name_en': celebrity.name_en,
         'aka': celebrity.aka,
+        'douban_id':celebrity.douban_id,
         'direct_movies': [movie_summary_schema(movie) for movie in Movie.objects(directors__in=[celebrity]) if Movie.objects(directors__in=[celebrity])],
         'casts_movies': [movie_summary_schema(movie) for movie in Movie.objects(casts__in=[celebrity]) if Movie.objects(casts__in=[celebrity])]
     }

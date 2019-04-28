@@ -194,15 +194,15 @@ class UserMovie(Resource):
                 'collect_movies_items': collect_movies_items
             }
         if args['type_name'] == 'wish':
-            pagination = Rating.objects(user=user, category=0, is_deleted=False).paginate(
+            pagination = Rating.objects(user=user, category=0, is_deleted=False).order_by('-rating_time').paginate(
                 page=args['page'], per_page=args['per_page'])
 
         if args['type_name'] == 'do':
-            pagination = Rating.objects(user=user, category=1, is_deleted=False).paginate(
+            pagination = Rating.objects(user=user, category=1, is_deleted=False).order_by('-rating_time').paginate(
                 page=args['page'], per_page=args['per_page'])
 
         if args['type_name'] == 'collect':
-            pagination = Rating.objects(user=user, category=2, is_deleted=False).paginate(
+            pagination = Rating.objects(user=user, category=2, is_deleted=False).order_by('-rating_time').paginate(
                 page=args['page'], per_page=args['per_page'])
 
         items = [rating_schema_on_user(rating)
