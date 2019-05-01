@@ -161,8 +161,9 @@ def parse_movie_json(r_json):
 
             celebrity_task=download_task(cast.get('id'),'celebrity')# 将下载演员的任务添加到redis中
             add_download_task_to_redis(celebrity_task)
-            Celebrity.objects(douban_id=cast['id']).update(
-                upsert=True, douban_id=cast['id'], name=cast['name'], avatar=avatar)
+            Celebrity(douban_id=cast['id'],name=cast['name'],avatar=avatar).save()
+            # Celebrity.objects(douban_id=cast['id']).update(
+            #     upsert=True, douban_id=cast['id'], name=cast['name'], avatar=avatar)
         except TypeError :
             pass
 

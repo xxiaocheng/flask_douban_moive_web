@@ -54,13 +54,18 @@ def add_import_info_from_douban_task_to_redis(task):
     redis_store.sadd('task:douban', json.dumps(task))
 
 
-def add_movie_to_rank_redis(movie):
+def add_movie_to_rank_redis(movie,dec=False):
     """@param rating: Rating instance
+    @param dec: score 自减1 
     在用户评分时,添加所评价电影到redis zset中 ,并设置过期时间 
     """
     key='rating:'+datetime.date.today().strftime('%y%m%d')
-    redis_store.zadd(key, {str(movie.id): movie.score})
-    redis_store.expire(key, time=60*60*24*30)  # 设置过期时间为三十天
+    # 设置过期时间为三十天
+    if dec:
+        redis_store.zincrby(key, -1,str(movie.id))
+    else:
+        redis_store.zincrby(key, 1,str(movie.id))
+    redis_store.expire(key, time=60*60*24*31) 
 
 
 def rank_redis_zset_paginate(keys, page=1, per_page=20, desc=True, withscores=False):

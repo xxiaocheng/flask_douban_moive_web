@@ -260,10 +260,10 @@ class User(db.Document):
                 if category == 2:
                     self.update(inc__collect_count=1)
                     movie.update(inc__collect_by_count=1)
+                    add_movie_to_rank_redis(movie)
             movie.reload()
             self._update_rating(movie)
             movie.reload()
-            add_movie_to_rank_redis(movie)
 
     def wish_movie(self, movie, score=0, comment=None, tags=None):
         self._rating_on_movie(movie, category=0, score=score,
@@ -330,6 +330,7 @@ class User(db.Document):
             if category == 2:
                 self.update(dec__collect_count=1)
                 movie.update(dec__collect_by_count=1)
+
             self.reload()
             movie.reload()
             self._update_rating(movie)
@@ -502,6 +503,7 @@ class Rating(db.Document):
         if category == 2:
             user.update(dec__collect_count=1)
             movie.update(dec__collect_by_count=1)
+            add_movie_to_rank_redis(movie,dec=True)
         user.reload()
         movie.reload()
         user._update_rating(movie)

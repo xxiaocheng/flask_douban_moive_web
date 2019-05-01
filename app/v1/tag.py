@@ -53,4 +53,4 @@ class Tags(Resource):
         }
 
 
-api.add_resource(Tags,'/tag')
+api.add_resource(Tags,'/tags')

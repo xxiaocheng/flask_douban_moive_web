@@ -54,15 +54,34 @@ api.add_resource(CinemaMovie, '/movie/cinema/<any(coming,showing):coming_or_show
 
 
 class Recommend(Resource):
-
+    """
+    获取为用户推荐的电影
+    暂时未实现
+    """
     @auth.login_required
     def get(self):
-        user = g.current_user
-        pass
-        # 只返回概述信息
+        parser = reqparse.RequestParser()
+        parser.add_argument('page', default=1, type=int, location='args')
+        parser.add_argument('per_page', default=20, type=int, location='args')
+        args = parser.parse_args()
+        pagination=Movie.objects().paginate(page=args.page,per_page=args.per_page)
+        items = [movie_summary_schema(movie) for movie in pagination.items]
+        prev = None
+        if pagination.has_prev:
+            prev = url_for(
+                '.recommend', page=args['page']-1, per_page=args['per_page'], _external=True)
+        next = None
+        if pagination.has_next:
+            next = url_for(
+                '.recommend', page=args['page']+1, per_page=args['per_page'], _external=True)
+        first = url_for(
+            '.recommend',page=1, perpage=args['per_page'], _external=True)
+        last  = url_for(
+            '.recommend',  page=pagination.pages, perpage=args['per_page'], _external=True)
+        return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
 
 
-api.add_resource(Recommend, '/movie/Recommend')
+api.add_resource(Recommend, '/movie/recommend')
 
 
 class Leaderboard(Resource):
@@ -77,7 +96,7 @@ class Leaderboard(Resource):
 
         if args['page'] <= 0:
             args['page'] = 1
-
+        today=datetime.date.today() 
         if time_range=='week':
             keys=['rating:'+(today-datetime.timedelta(days=days)).strftime('%y%m%d') for days in range(1,8)]
         if time_range=='month':

@@ -17,6 +17,7 @@ def items_schema(items, prev, next, first, last, total, pages):
 
 def user_summary_schema(user):
     return{
+        'id':str(user.id),
         "name": user.username,
         "created_time": user.created_time.strftime("%Y-%m-%d %H:%M:%S"),
         "avatar": url_for('api.photo',cate='avatar', filename=user.avatar_raw, _external=True),
