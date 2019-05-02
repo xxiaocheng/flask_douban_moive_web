@@ -68,21 +68,23 @@ def add_movie_to_rank_redis(movie,dec=False):
     redis_store.expire(key, time=60*60*24*31) 
 
 
-def rank_redis_zset_paginate(keys, page=1, per_page=20, desc=True, withscores=False):
+def rank_redis_zset_paginate(keys,time_range='week', page=1, per_page=20, desc=True, withscores=False):
     """@param keys :redis``key``list
     @param page :需要取出第几页,从1开始计数
     @param per_page :每页返回的数量
     @param desc :``True`` 降序排序, ``False`` 升序排序
     @param with_score: ``True`` 带分数返回,``False`` 不带分数返回
     """
-    today_rank_key='rating:rank:'+datetime.date.today().strftime('%y%m%d')
+    today_rank_key='rating:rank:'+time_range+':'+datetime.date.today().strftime('%y%m%d')
     if not redis_store.exists(today_rank_key):
         redis_store.zunionstore(today_rank_key,keys=keys)
         redis_store.expire(today_rank_key,time=60*5)    #排行榜临时键过期时间为五分钟
 
     start = per_page*(page-1)
     end = start+per_page-1
-    return [value.decode() for value in redis_store.zrange(today_rank_key, start=start, end=end, desc=desc, withscores=withscores) if redis_store.zrange(today_rank_key, start=start, end=end, desc=desc, withscores=withscores)]
+    total_count=redis_store.zcard(today_rank_key)
+
+    return [value.decode() for value in redis_store.zrange(today_rank_key, start=start, end=end, desc=desc, withscores=withscores) if redis_store.zrange(today_rank_key, start=start, end=end, desc=desc, withscores=withscores)],total_count
 
 
 def send_email_limit(user,cate):

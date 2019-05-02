@@ -98,16 +98,14 @@ class Leaderboard(Resource):
             args['page'] = 1
         today=datetime.date.today() 
         if time_range=='week':
-            keys=['rating:'+(today-datetime.timedelta(days=days)).strftime('%y%m%d') for days in range(1,8)]
+            keys=['rating:'+(today-datetime.timedelta(days=days)).strftime('%y%m%d') for days in range(0,7)]
         if time_range=='month':
-            keys=['rating:'+(today-datetime.timedelta(days=days)).strftime('%y%m%d') for days in range(1,31)]
+            keys=['rating:'+(today-datetime.timedelta(days=days)).strftime('%y%m%d') for days in range(0,30)]
 
-        id_items = rank_redis_zset_paginate(
-            keys=keys, page=args['page'], per_page=args['per_page'])
+        id_items,id_total = rank_redis_zset_paginate(
+            keys=keys, time_range=time_range, page=args['page'], per_page=args['per_page'])
         movie_objects_items = query_by_id_list(
             document=Movie, id_list=id_items)
-
-        total = len(movie_objects_items)
         prev = None
         next = None
         if args['page'] == 1:
@@ -115,7 +113,7 @@ class Leaderboard(Resource):
         else:
             prev = url_for('.leaderboard', time_range=time_range,
                            page=args['page']-1, per_page=args['per_page'], _external=True)
-        if args['page']*args['per_page'] > total:
+        if args['page']*args['per_page'] >=id_total:
             next = None
         else:
             next = url_for('.leaderboard', time_range=time_range,
@@ -123,7 +121,7 @@ class Leaderboard(Resource):
         first = url_for('.leaderboard', time_range=time_range,
                         page=1, per_page=args['per_page'], _external=True)
 
-        pages = math.ceil(total/args['per_page'])
+        pages = math.ceil(id_total/args['per_page'])
         if pages == 0:
             last = url_for('.leaderboard', time_range=time_range,
                            page=1, per_page=args['per_page'], _external=True)
@@ -131,14 +129,15 @@ class Leaderboard(Resource):
             last = url_for('.leaderboard', time_range=time_range,
                            page=pages, per_page=args['per_page'], _external=True)
 
-        return items_schema([movie_summary_schema(movie) for movie in movie_objects_items if movie_objects_items], prev, next, first, last, total, pages)
+        return items_schema([movie_summary_schema(movie) for movie in movie_objects_items if movie_objects_items and movie], prev, next, first, last, id_total, pages)
 
 
 api.add_resource(Leaderboard, '/movie/leaderboard/<time_range>')
 
 
 class TypeRank(Resource):
-
+    """根据标签对电影进行排序
+    """
     def get(self):
         parser = reqparse.RequestParser()
         parser.add_argument('type_name', type=str, location='args')
@@ -149,7 +148,7 @@ class TypeRank(Resource):
         tag_obj = Tag.objects(name=args['type_name'], cate=1).first()
         if not tag_obj:
             return{
-                "message": 'no type found'
+                "message": 'type not found'
             }, 404
 
         # 按照评分降序查询
@@ -265,11 +264,13 @@ api.add_resource(MineMovie, '/movie/mine')
 
 
 class ChoiceMovie(Resource):
-
+    """
+    根据时间, 国家,类型, 电影或电视剧 进行选择 
+    """
     def get(self):
         parser = reqparse.RequestParser()
         parser.add_argument('subtype', default=None, type=str, choices=[
-                            'tv', 'movie'], location='args')
+                            'tv', 'movie',''], location='args')
         parser.add_argument('type_name', default=None,
                             type=str, location='args')
         parser.add_argument('country', default=None, type=str, location='args')
@@ -277,6 +278,7 @@ class ChoiceMovie(Resource):
 
         parser.add_argument('page', default=1, type=int, location='args')
         parser.add_argument('per_page', default=20, type=int, location='args')
+        parser.add_argument('oredr',default='score',choices=['score','collect_count'])
         args = parser.parse_args()
 
         tag_obj = None
@@ -314,17 +316,17 @@ class ChoiceMovie(Resource):
         prev = None
         if pagination.has_prev:
             prev = url_for(
-                '.typerank', type_name=args['type_name'], page=args['page']-1, per_page=args['per_page'], _external=True)
+                '.choicemovie', type_name=args['type_name'], page=args['page']-1, per_page=args['per_page'], _external=True)
 
         next = None
         if pagination.has_next:
             next = url_for(
-                '.typerank', type_name=args['type_name'], page=args['page']+1, per_page=args['per_page'], _external=True)
+                '.choicemovie', type_name=args['type_name'], page=args['page']+1, per_page=args['per_page'], _external=True)
 
         first = url_for(
-            '.typerank', type_name=args['type_name'], page=1, perpage=args['per_page'], _external=True)
+            '.choicemovie', type_name=args['type_name'], page=1, perpage=args['per_page'], _external=True)
         last  = url_for(
-            '.typerank', type_name=args['type_name'], page=pagination.pages, perpage=args['per_page'], _external=True)
+            '.choicemovie', type_name=args['type_name'], page=pagination.pages, perpage=args['per_page'], _external=True)
         return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
 
 
@@ -332,6 +334,8 @@ api.add_resource(ChoiceMovie, '/movie/choices')
 
 
 class MovieInfo(Resource):
+
+    # @cache.cached(timeout=60,query_string=True) 
 
     @auth.login_required
     def get(self, movieid):
@@ -443,7 +447,8 @@ api.add_resource(UserInterestMovie, '/movie/<movieid>/interest')
 
 
 class MovieRating(Resource):
-
+    """评价过这部电影的人.
+    """
     @auth.login_required
     def get(self, movieid, category):
         parser = reqparse.RequestParser()

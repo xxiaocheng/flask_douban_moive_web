@@ -233,23 +233,30 @@ class UploadAvatar(Resource):
     @auth.login_required
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('avatar_file', required=True,
+        parser.add_argument('raw_file', required=True,
                             type=FileStorage, location='files')
+        parser.add_argument('l_file', required=True,
+                            type=FileStorage, location='files')                   
         args = parser.parse_args()
         user = g.current_user
-        ext = os.path.splitext(args['avatar_file'].filename)[1]
-        if ext not in current_app.config['UPLOAD_IMAGE_EXT']:
+        raw_ext = os.path.splitext(args['raw_file'].filename)[1]
+        l_ext=os.path.splitext(args.l_file.filename)[1]
+
+        if raw_ext not in current_app.config['UPLOAD_IMAGE_EXT'] or l_ext not in current_app.config['UPLOAD_IMAGE_EXT']:
             return{
                 'message': 'file type error',
-                'type': ext
+                'type': raw_ext
             }, 403
 
-        new_filename = rename_image(args['avatar_file'].filename)
+        raw_filename = rename_image(args['raw_file'].filename)
+        l_filename=raw_filename.split('.')[0]+'_l.'+raw_filename.split('.')[1]
 
-        with open(os.path.join(current_app.config['AVATAR_UPLOAD_PATH'], new_filename), 'wb') as f:
-            args['avatar_file'].save(f)
+        with open(os.path.join(current_app.config['AVATAR_UPLOAD_PATH'], raw_filename), 'wb') as f:
+            args['raw_file'].save(f)
+        with open(os.path.join(current_app.config['AVATAR_UPLOAD_PATH'], l_filename), 'wb') as f:
+            args['l_file'].save(f)
 
-        user.update(avatar_raw=new_filename)
+        user.update(avatar_raw=raw_filename,avatar_l=l_filename)
         return {
             'filemame': 'change avatar successfuly.'
         }

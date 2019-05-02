@@ -20,7 +20,7 @@ def user_summary_schema(user):
         'id':str(user.id),
         "name": user.username,
         "created_time": user.created_time.strftime("%Y-%m-%d %H:%M:%S"),
-        "avatar": url_for('api.photo',cate='avatar', filename=user.avatar_raw, _external=True),
+        "avatar": url_for('api.photo',cate='avatar', filename=user.avatar_l, _external=True),
         "signature": user.signature,
         "role": user.role.name.lower()
     }
@@ -58,7 +58,7 @@ def user_schema(user):
         "loc_name": user.location,
         "created_time": user.created_time.strftime("%Y-%m-%d %H:%M:%S"),
         "is_locked": user.is_locked(),
-        "avatar": url_for('api.photo', cate='avatar',filename=user.avatar_raw, _external=True),
+        "avatar": url_for('api.photo', cate='avatar',filename=user.avatar_l, _external=True),
         "signature": user.signature,
         "role": user.role.name.lower(),
         "do_count": user.do_count,

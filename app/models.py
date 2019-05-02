@@ -305,12 +305,14 @@ class User(db.Document):
         return False
 
     def generate_avatar(self):
-        avatar = Identicon()
-        filenames = avatar.generate(text=self.username)
-        self.avatar_s = filenames[0]
-        self.avatar_m = filenames[1]
-        self.avatar_l = filenames[2]
-        self.avatar_raw=filenames[2]   # ?
+        if not self.avatar_raw:
+            # 不知道为啥 每次都会调用 __init__()
+            avatar = Identicon()
+            filenames = avatar.generate(text=self.username)
+            self.avatar_s = filenames[0]
+            self.avatar_m = filenames[1]
+            self.avatar_l = filenames[2]
+            self.avatar_raw=filenames[2]   # ?
 
     def delete_rating(self, movie):
         rating = Rating.objects(user=self, movie=movie,

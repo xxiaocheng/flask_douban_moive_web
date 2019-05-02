@@ -86,7 +86,7 @@ class BaseConfig(object):
     }
 
     # image can upload with ext
-    UPLOAD_IMAGE_EXT=['.jpg','.png']
+    UPLOAD_IMAGE_EXT=['.jpg','.png','.jpeg']
 
 class DevelopmentConfig(BaseConfig):
     ADMIN_EMAIL='cxxlxx0@gmail.com'
