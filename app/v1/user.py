@@ -1,6 +1,6 @@
 import os
 import re
-
+import json
 from flask import current_app, g, url_for
 from flask_restful import Resource, abort, reqparse
 from werkzeug.datastructures import FileStorage
@@ -63,14 +63,15 @@ class UserRegister(Resource):
         """注销当前用户,注销前验证用户密码
         """
         parser = reqparse.RequestParser()
-        parser.add_argument('password', location='form')
+        parser.add_argument('password',required=True, location='form')
         args = parser.parse_args()
         if not g.current_user.validate_password(args['password']):
             return{
                 "message": "illegal password"
             }, 403
 
-        g.current_user.update(is_deleted=True)
+        g.current_user.delete_self()
+
         return{
             "message": 'succeed'
         }
@@ -90,19 +91,31 @@ class UserRegister(Resource):
             username_rex = re.compile('^[a-zA-Z0-9\_]{6,16}$')
             if username_rex.match(args['username']):
                 if User.objects(username=args.username, is_deleted=False).first():
-                    username_modified = False
+                    if args.username==user.username:
+                        username_modified=True;
+                    else:
+                        username_modified = False
                 else:
                     user.update(username=args.username)
                     username_modified = True
 
-
         if args.location:
-            if len(args['location'])<=10:
-                user.update(location=args.location)
-                location_modified=True
+            if '.' in args.location:
+                with open(os.path.join(current_app.config['AREA_DATA_PATH'],'area-data.json'),'r') as f: 
+                    local_dict=json.load(f)
+                local_list=args.location.split('.')
+                try:
+                    if  local_list[1]=='undefined':
+                        local_dict['86'][local_list[0]]
+                    else:
+                        local_dict[local_list[0]][local_list[1]]
+                    location_modified=True
+                    user.update(location=args.location)
+                except:
+                    pass
 
         if args.signature:
-            if len(args['signature'])<=44:
+            if len(args['signature'])<=50:
                 user.update(signature=args.signature)
                 signature_modified=True
 

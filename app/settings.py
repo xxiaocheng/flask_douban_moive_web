@@ -30,6 +30,7 @@ class BaseConfig(object):
     REDIS_URL = "redis://localhost:6379/0"
 
     #upload dir
+    AREA_DATA_PATH=os.path.join(basedir,'app');
     UPLOAD_PATH = os.path.join(basedir, 'uploads')
     AVATAR_UPLOAD_PATH=os.path.join(UPLOAD_PATH,'avatar')
     MOVIE_IMAGE_UPLOAD_PATH=os.path.join(UPLOAD_PATH,'movie')

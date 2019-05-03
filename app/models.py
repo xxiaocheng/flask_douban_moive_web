@@ -306,7 +306,6 @@ class User(db.Document):
 
     def generate_avatar(self):
         if not self.avatar_raw:
-            # 不知道为啥 每次都会调用 __init__()
             avatar = Identicon()
             filenames = avatar.generate(text=self.username)
             self.avatar_s = filenames[0]
@@ -342,6 +341,30 @@ class User(db.Document):
         if like:
             return True
         return False
+    
+    def delete_self(self):
+
+        # 删除账户时执行的操作
+        followings=Follow.objects(follower=self,is_deleted=False)
+        followers=Follow.objects(followed=self,is_deleted=False)
+        for follow in followings:
+            follow.followed.update(dec__followers_count=1)
+            follow.is_deleted=True
+
+        for follow in followers:
+            follow.follower.update(dec__followings_coung=1)
+            follow.is_deleted=True
+
+        ratings=Rating.objects(user=self,is_deleted=False)
+
+        for rating in ratings:
+            rating.delete_self()
+        
+        self.update(is_deleted=True)
+        
+        
+
+
 
 
 class Celebrity(db.Document):

@@ -28,25 +28,23 @@ class AuthTokenAPI(Resource):
         if args['grant_type'] is None or args['grant_type'].lower() != 'password':
             return abort(http_status_code=400, message='The grant type must be password.')
 
-        user = User.objects(username=args['username']).first()
+        user = User.objects(username=args['username'],is_deleted=False).first()
         if user is None or not user.validate_password(args['password']):
-            return abort(http_status_code=400, message='Either the username or password was invalid.')
+            return abort(http_status_code=400, message='账户名或密码错误!',error_code=1001)
 
         if user.is_locked():
             return{
                 "message": "用户被封禁,请联系管理员!"
             }, 403
-        if user.is_deleted:
-            return{
-                "message": "用户不存在!"
-            }, 404
         if not user.confirmed_email:
             return{
-                'message': '请验证邮箱!'
+                'message': '请验证邮箱!',
+                'error_code':1000
             }, 403,
         expiration = current_app.config['EXPIRATION']
         token = user.generate_token(expiration=expiration)
 
+        # 错误吗1001 密码错误, 1000 未验证邮箱
         return{
             'access_token': token,
             'token_type': 'bearer',
@@ -169,7 +167,7 @@ class ResentConfirmEmail(Resource):
         args = parser.parse_args()
         user = User.objects(username=args['username']).first()
         if user is None or not user.validate_password(args['password']):
-            return abort(http_status_code=400, message='Either the username or password was invalid.')
+            return abort(http_status_code=400, message='账户名或密码错误!')
         
         if user.confirmed_email :
             return {
@@ -210,10 +208,10 @@ class ChangePassword(Resource):
         if user.validate_password(args['oldpassword']):
             user.set_password(args['newpassword'])
             return{
-                'message': 'change password successfuly'
+                'message': '密码修改成功'
             }
         return {
-            'message': 'password check failed'
+            'message': '请输入正确的密码'
         }, 403
 
 
