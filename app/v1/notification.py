@@ -38,7 +38,7 @@ class NotificationInfo(Resource):
             pagination=Notification.objects(receiver=user,category=0).paginate(
                 page=args['page'], per_page=args['per_page'])
 
-        if type_name=='rating':
+        if type_name=='like':
             pagination=Notification.objects(receiver=user,category=1).paginate(
                 page=args['page'], per_page=args['per_page'])
 
@@ -70,4 +70,4 @@ class NotificationInfo(Resource):
 
 
 api.add_resource(NotificationInfo,
-                 '/notification/<any(friendship,rating,sys):type_name>')
+                 '/notification/<any(friendship,like,sys):type_name>')

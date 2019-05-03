@@ -193,7 +193,8 @@ def _like_schema(like):
     return{
         'who_name':like.user.username, # 点赞你的人
         'who_avatar':url_for('api.photo',cate='avatar', filename=like.user.avatar_l, _external=True),
-        'rating':rating_schema(like.rating)
+        'movie_id':str(like.rating.movie.id),
+        'movie_title':like.rating.movie.title
     }
 
 def _follow_schema(follow):
@@ -203,4 +204,6 @@ def _follow_schema(follow):
     }
 
 def _sys_notifi_schema(system_info):
-    pass
+    return {
+        'info':system_info
+    }

@@ -26,7 +26,7 @@ def sent_sys_message_to_user(user,message=None):
 
 def sent_sys_message_to_admin(message=None):
     with redis_store.app.app_context():
-        admin_user = User.objects(email=current_app.config['ADMIN_EMAIL']).first()
+        admin_user = User.objects(email=current_app.config['ADMIN_EMAIL'],is_deleted=False).first()
         sent_sys_message_to_user(admin_user,message)
 
 
