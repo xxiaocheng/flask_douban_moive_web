@@ -173,7 +173,8 @@ def rating_schema_on_user(rating):
         'tags': [tag.name for tag in rating.tags if rating.tags],
         'id':str(rating.id),
         'comment':rating.comment,
-        'movie':movie_summary_schema(rating.movie)
+        'movie':movie_schema(rating.movie),
+        'cate':rating.category
     }
 
 

@@ -43,12 +43,14 @@ class AuthTokenAPI(Resource):
             }, 403,
         expiration = current_app.config['EXPIRATION']
         token = user.generate_token(expiration=expiration)
+        role=user.role.name
 
         # 错误吗1001 密码错误, 1000 未验证邮箱
         return{
             'access_token': token,
             'token_type': 'bearer',
-            'expires_in': expiration
+            'expires_in': expiration,
+            'role':role.lower()
         }, 201, {
             'Cache-Control': 'no-store',
             'Pragma': 'no-cache'

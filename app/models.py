@@ -20,10 +20,10 @@ class Role(db.Document):
     @staticmethod
     def init_role():
         roles_permissions_map = {
-            'Locked': ['FOLLOW', 'COLLECT'],
+            'Locked':[],
             'User': ['FOLLOW', 'COLLECT', 'COMMENT', 'UPLOAD'],
-            'Moderator': ['FOLLOW', 'COLLECT', 'COMMENT', 'UPLOAD', 'MODERATE'],
-            'Administrator': ['FOLLOW', 'COLLECT', 'COMMENT', 'UPLOAD', 'MODERATE', 'ADMINISTER']
+            'Moderator': ['FOLLOW', 'COLLECT', 'COMMENT', 'UPLOAD', 'MODERATE','SET_ROLE'],
+            'Administrator': ['FOLLOW', 'COLLECT', 'COMMENT', 'UPLOAD', 'MODERATE', 'ADMINISTER','LOCK','SET_ROLE']
         }
 
         for role_name in roles_permissions_map:
@@ -134,6 +134,8 @@ class User(db.Document):
 
     def set_role(self):
         # 为新添加的用户设置默认角色
+        if not Role.objects().first():
+            Role.init_role()
         if self.role == None:
             if self.email == current_app.config['ADMIN_EMAIL']:
                 self.role = Role.objects(name='Administrator').first()
