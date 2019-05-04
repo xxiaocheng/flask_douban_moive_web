@@ -11,17 +11,18 @@ from mongoengine.queryset.visitor import Q
 from app.extensions import api, cache
 from app.helpers.redis_utils import *
 from app.helpers.utils import query_by_id_list
-from app.models import Movie, Rating, Tag, User,Cinema
+from app.models import Movie, Rating, Tag, User, Cinema, Follow
 
 from .auth import auth, email_confirm_required, permission_required
 from .schemas import (items_schema, movie_schema, movie_summary_schema,
-                      rating_schema,rating_schema_on_user)
+                      rating_schema, rating_schema_on_user)
 
 
 class CinemaMovie(Resource):
     """正在上映和即将上映的电影
     """
     # @cache.cached(timeout=60*60*24*3,query_string=True)
+
     def get(self, coming_or_showing):
         parser = reqparse.RequestParser()
         parser.add_argument('page', default=1, type=int, location='args')
@@ -29,12 +30,15 @@ class CinemaMovie(Resource):
         args = parser.parse_args()
 
         if coming_or_showing == 'coming':
-            pagination=Cinema.objects(cate=1).paginate(page=args['page'], per_page=args['per_page'])
+            pagination = Cinema.objects(cate=1).paginate(
+                page=args['page'], per_page=args['per_page'])
 
         elif coming_or_showing == 'showing':
-            pagination=Cinema.objects(cate=0).paginate(page=args['page'], per_page=args['per_page'])
-        
-        items = [movie_summary_schema(cinema.movie) for cinema in pagination.items]
+            pagination = Cinema.objects(cate=0).paginate(
+                page=args['page'], per_page=args['per_page'])
+
+        items = [movie_summary_schema(cinema.movie)
+                 for cinema in pagination.items]
 
         prev = None
         if pagination.has_prev:
@@ -46,11 +50,13 @@ class CinemaMovie(Resource):
                 '.cinemamovie', coming_or_showing=coming_or_showing, page=args['page']+1, per_page=args['per_page'], _external=True)
         first = url_for(
             '.cinemamovie', coming_or_showing=coming_or_showing, page=1, perpage=args['per_page'], _external=True)
-        last  = url_for(
+        last = url_for(
             '.cinemamovie', coming_or_showing=coming_or_showing, page=pagination.pages, perpage=args['per_page'], _external=True)
         return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
 
-api.add_resource(CinemaMovie, '/movie/cinema/<any(coming,showing):coming_or_showing>')
+
+api.add_resource(
+    CinemaMovie, '/movie/cinema/<any(coming,showing):coming_or_showing>')
 
 
 class Recommend(Resource):
@@ -64,7 +70,7 @@ class Recommend(Resource):
         parser.add_argument('page', default=1, type=int, location='args')
         parser.add_argument('per_page', default=20, type=int, location='args')
         args = parser.parse_args()
-        pagination=Movie.objects().paginate(page=args.page,per_page=args.per_page)
+        pagination = Movie.objects().paginate(page=args.page, per_page=args.per_page)
         items = [movie_summary_schema(movie) for movie in pagination.items]
         prev = None
         if pagination.has_prev:
@@ -75,8 +81,8 @@ class Recommend(Resource):
             next = url_for(
                 '.recommend', page=args['page']+1, per_page=args['per_page'], _external=True)
         first = url_for(
-            '.recommend',page=1, perpage=args['per_page'], _external=True)
-        last  = url_for(
+            '.recommend', page=1, perpage=args['per_page'], _external=True)
+        last = url_for(
             '.recommend',  page=pagination.pages, perpage=args['per_page'], _external=True)
         return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
 
@@ -96,13 +102,15 @@ class Leaderboard(Resource):
 
         if args['page'] <= 0:
             args['page'] = 1
-        today=datetime.date.today() 
-        if time_range=='week':
-            keys=['rating:'+(today-datetime.timedelta(days=days)).strftime('%y%m%d') for days in range(0,7)]
-        if time_range=='month':
-            keys=['rating:'+(today-datetime.timedelta(days=days)).strftime('%y%m%d') for days in range(0,30)]
+        today = datetime.date.today()
+        if time_range == 'week':
+            keys = ['rating:'+(today-datetime.timedelta(days=days)
+                               ).strftime('%y%m%d') for days in range(0, 7)]
+        if time_range == 'month':
+            keys = ['rating:'+(today-datetime.timedelta(days=days)
+                               ).strftime('%y%m%d') for days in range(0, 30)]
 
-        id_items,id_total = rank_redis_zset_paginate(
+        id_items, id_total = rank_redis_zset_paginate(
             keys=keys, time_range=time_range, page=args['page'], per_page=args['per_page'])
         movie_objects_items = query_by_id_list(
             document=Movie, id_list=id_items)
@@ -113,7 +121,7 @@ class Leaderboard(Resource):
         else:
             prev = url_for('.leaderboard', time_range=time_range,
                            page=args['page']-1, per_page=args['per_page'], _external=True)
-        if args['page']*args['per_page'] >=id_total:
+        if args['page']*args['per_page'] >= id_total:
             next = None
         else:
             next = url_for('.leaderboard', time_range=time_range,
@@ -138,6 +146,7 @@ api.add_resource(Leaderboard, '/movie/leaderboard/<time_range>')
 class TypeRank(Resource):
     """根据标签对电影进行排序
     """
+
     def get(self):
         parser = reqparse.RequestParser()
         parser.add_argument('type_name', type=str, location='args')
@@ -169,7 +178,7 @@ class TypeRank(Resource):
 
         first = url_for(
             '.typerank', type_name=args['type_name'], page=1, perpage=args['per_page'], _external=True)
-        last  = url_for(
+        last = url_for(
             '.typerank', type_name=args['type_name'], page=pagination.pages, perpage=args['per_page'], _external=True)
         return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
 
@@ -238,7 +247,7 @@ class UserMovie(Resource):
 
         first = url_for(
             '.usermovie', username=username, type_name=args['type_name'], page=1, perpage=args['per_page'], _external=True)
-        last  = url_for(
+        last = url_for(
             '.usermovie', username=username, type_name=args['type_name'], page=pagination.pages, perpage=args['per_page'], _external=True)
         return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
 
@@ -267,10 +276,11 @@ class ChoiceMovie(Resource):
     """
     根据时间, 国家,类型, 电影或电视剧 进行选择 
     """
+
     def get(self):
         parser = reqparse.RequestParser()
         parser.add_argument('subtype', default=None, type=str, choices=[
-                            'tv', 'movie',''], location='args')
+                            'tv', 'movie', ''], location='args')
         parser.add_argument('type_name', default=None,
                             type=str, location='args')
         parser.add_argument('country', default=None, type=str, location='args')
@@ -278,7 +288,8 @@ class ChoiceMovie(Resource):
 
         parser.add_argument('page', default=1, type=int, location='args')
         parser.add_argument('per_page', default=20, type=int, location='args')
-        parser.add_argument('oredr',default='score',choices=['score','collect_count'])
+        parser.add_argument('oredr', default='score', choices=[
+                            'score', 'collect_count'])
         args = parser.parse_args()
 
         tag_obj = None
@@ -325,7 +336,7 @@ class ChoiceMovie(Resource):
 
         first = url_for(
             '.choicemovie', type_name=args['type_name'], page=1, perpage=args['per_page'], _external=True)
-        last  = url_for(
+        last = url_for(
             '.choicemovie', type_name=args['type_name'], page=pagination.pages, perpage=args['per_page'], _external=True)
         return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
 
@@ -335,41 +346,42 @@ api.add_resource(ChoiceMovie, '/movie/choices')
 
 class MovieInfo(Resource):
 
-    # @cache.cached(timeout=60,query_string=True) 
+    # @cache.cached(timeout=60,query_string=True)
 
     @auth.login_required
     def get(self, movieid):
         # 返回此电影详细信息
         try:
             movie = Movie.objects(id=movieid, is_deleted=False).first()
-        except  ValidationError:
+        except ValidationError:
             return{
-                'message':'movie not found'
-            },404
+                'message': 'movie not found'
+            }, 404
         if movie:
             return movie_schema(movie)
         else:
             return {
-                'message':'movie not found'
-            },404
-
+                'message': 'movie not found'
+            }, 404
 
     # @auth.login_required
     # @permission_required('DELETED_MOVIE')
-    def delete(self,movieid):
+    def delete(self, movieid):
         try:
-            n=Movie.objects(id=movieid,is_deleted=False).update(is_deleted=True)
+            n = Movie.objects(id=movieid, is_deleted=False).update(
+                is_deleted=True)
         except ValidationError:
             return{
-                'message':'illegal movieid'
-            },402
-        if n==1:
+                'message': 'illegal movieid'
+            }, 402
+        if n == 1:
             return {
-                'message':'delete this movie successfuly '
+                'message': 'delete this movie successfuly '
             }
         return{
-            'message':'movie not exist'
+            'message': 'movie not exist'
         }
+
 
 api.add_resource(MovieInfo, '/movie/<movieid>')
 
@@ -383,8 +395,6 @@ api.add_resource(MovieInfo, '/movie/<movieid>')
 #     #     return{
 #     #         'message': 'add  movie here'
 #     #     }
-    
-
 
 
 # api.add_resource(MovieAction, '/movie')
@@ -396,7 +406,7 @@ class UserInterestMovie(Resource):
     def post(self, movieid):
         user = g.current_user
         parser = reqparse.RequestParser()
-        parser.add_argument('interest', type=str,choices=['wish','do','collect'],
+        parser.add_argument('interest', type=str, choices=['wish', 'do', 'collect'],
                             required=True, location='form')
         parser.add_argument('score', type=int, default=0, location='form')
         parser.add_argument('tags', type=str, location='form')
@@ -404,28 +414,28 @@ class UserInterestMovie(Resource):
         args = parser.parse_args()
         try:
             movie = Movie.objects(id=movieid, is_deleted=False).first()
-        except ValidationError :
+        except ValidationError:
             return{
-                'message':'movie not found'
-            },404
+                'message': 'movie not found'
+            }, 404
 
         if not movie:
             return{
                 'message': 'movie not found'
-            },404
-        
-        if len(args.comment)>100:
+            }, 404
+
+        if len(args.comment) > 100:
             return {
-                'message':'评论长度不能超过100个字符!'
-            },403
-        if args.score>10 or args.score<0:
+                'message': '评论长度不能超过100个字符!'
+            }, 403
+        if args.score > 10 or args.score < 0:
             return{
-                'message':'评分必须在 1-10 之间!'
-            },403
-        if len(args.tags.split(' '))>10:
+                'message': '评分必须在 1-10 之间!'
+            }, 403
+        if len(args.tags.split(' ')) > 10:
             return{
-                'message':'最多可以添加10个标签!'
-            },403
+                'message': '最多可以添加10个标签!'
+            }, 403
 
         if args['interest'] == 'wish':
             user.wish_movie(
@@ -458,12 +468,12 @@ class MovieRating(Resource):
         parser.add_argument('per_page', default=20, type=int, location='args')
         args = parser.parse_args()
         try:
-            #当查询的movie ID 不符合规范触发
+            # 当查询的movie ID 不符合规范触发
             movie = Movie.objects(id=movieid, is_deleted=False).first()
         except ValidationError:
             return{
-                'message':'movie not found'
-            },404
+                'message': 'movie not found'
+            }, 404
 
         if not movie or category not in ['wish', 'do', 'collect', 'all']:
             return{
@@ -500,9 +510,51 @@ class MovieRating(Resource):
 
         first = url_for(
             '.movierating', movieid=movieid, category=category, sort=args['sort'], page=1, perpage=args['per_page'], _external=True)
-        last  = url_for(
+        last = url_for(
             '.movierating', movieid=movieid, category=category, sort=args['sort'], page=pagination.pages, perpage=args['per_page'], _external=True)
         return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
 
 
 api.add_resource(MovieRating, '/movie/<movieid>/rating/<category>')
+
+
+class FollowFeed(Resource):
+    """首页显示用户关注的用户的信息
+    """
+    @auth.login_required
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('page', default=1, type=int, location='args')
+        parser.add_argument('per_page', default=20, type=int, location='args')
+        args = parser.parse_args()
+
+        current_user = g.current_user
+
+        following = Follow.objects(follower=current_user, is_deleted=False)
+
+        following_user = [follow.followed for follow in following]
+
+        pagination = Rating.objects(user__in=following_user, is_deleted=False).order_by(
+            '-rating_time').paginate(page=args.page, per_page=args.per_page)
+
+        items = [rating_schema_on_user(rating)
+                 for rating in pagination.items]
+
+        prev = None
+        if pagination.has_prev:
+            prev = url_for(
+                '.followfeed', page=args['page']-1, per_page=args['per_page'], _external=True)
+
+        next = None
+        if pagination.has_next:
+            next = url_for(
+                '.followfeed',  page=args['page']+1, per_page=args['per_page'], _external=True)
+
+        first = url_for(
+            '.followfeed', page=1, perpage=args['per_page'], _external=True)
+        last = url_for(
+            '.followfeed', page=pagination.pages, perpage=args['per_page'], _external=True)
+        return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
+
+
+api.add_resource(FollowFeed,'/feed')

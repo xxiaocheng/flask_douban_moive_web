@@ -348,17 +348,19 @@ class User(db.Document):
         followings=Follow.objects(follower=self,is_deleted=False)
         followers=Follow.objects(followed=self,is_deleted=False)
         for follow in followings:
-            follow.followed.update(dec__followers_count=1)
-            follow.is_deleted=True
+            self.unfollow(follow.followed)
 
         for follow in followers:
-            follow.follower.update(dec__followings_coung=1)
-            follow.is_deleted=True
+            follow.follower.unfollow(self)
 
         ratings=Rating.objects(user=self,is_deleted=False)
-
         for rating in ratings:
             rating.delete_self()
+
+        # 取消对评论的点赞
+        likes=Like.objects(user=self)
+        for like in likes:
+            like.rating.unlike_by(self)
         
         self.update(is_deleted=True)
         
@@ -461,9 +463,9 @@ class Follow(db.Document):
     follow_time = db.DateTimeField(default=datetime.now)
     is_deleted = db.BooleanField(default=False)
 
-    def __repr__(self):
-        super().__repr__()
-        return '<%s following %s: Follow object>' % self.follower, self.followed
+    # def __repr__(self):
+    #     super().__repr__()
+    #     return '<%s following %s: Follow object>' % self.follower, self.followed
 
     def save(self, force_insert=False, validate=True, clean=True, write_concern=None, cascade=None, cascade_kwargs=None, _refs=None, save_condition=None, signal_kwargs=None, **kwargs):
         super().save(force_insert=force_insert, validate=validate, clean=clean, write_concern=write_concern, cascade=cascade,

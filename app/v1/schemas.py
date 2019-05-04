@@ -167,6 +167,7 @@ def rating_schema(rating):
 def rating_schema_on_user(rating):
     
     return{
+        'user':user_summary_schema(rating.user),
         'score':rating.score,
         'time': rating.rating_time.strftime("%Y-%m-%d %H:%M:%S"),
         'tags': [tag.name for tag in rating.tags if rating.tags],
