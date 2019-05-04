@@ -109,12 +109,12 @@ class TestingConfig(BaseConfig):
     }
     ADMIN_EMAIL='cxxlxx0@gmail.com'
 
-class ProductionCofig(BaseConfig):
+class ProductionConfig(BaseConfig):
     pass
 
 
 config={
     'development':DevelopmentConfig,
     'testing':TestingConfig,
-    'production':ProductionCofig
+    'production':ProductionConfig
 }
