@@ -76,11 +76,11 @@ def user_schema(user):
 def movie_schema(movie):
 
     try:
-        directors=[celebrity_summary_schema(celebrity) for celebrity in movie.directors if movie.directors]
+        directors=[celebrity_summary_schema(celebrity) for celebrity in movie.directors if movie.directors and celebrity.is_deleted==False]
     except:
         directors=[]
     try:
-        casts=[celebrity_summary_schema(cast) for cast in movie.casts if movie.casts],
+        casts=[celebrity_summary_schema(cast) for cast in movie.casts if movie.casts and cast.is_deleted==False]
     except:
         casts=[]
     user=g.current_user
@@ -137,8 +137,8 @@ def celebrity_schema(celebrity):
         'name_en': celebrity.name_en,
         'aka': celebrity.aka,
         'douban_id':celebrity.douban_id,
-        'direct_movies': [movie_summary_schema(movie) for movie in Movie.objects(directors__in=[celebrity]) if Movie.objects(directors__in=[celebrity])],
-        'casts_movies': [movie_summary_schema(movie) for movie in Movie.objects(casts__in=[celebrity]) if Movie.objects(casts__in=[celebrity])]
+        'direct_movies': [movie_summary_schema(movie) for movie in Movie.objects(directors__in=[celebrity]) if movie.is_deleted==False],
+        'casts_movies': [movie_summary_schema(movie) for movie in Movie.objects(casts__in=[celebrity]) if movie.is_deleted==False]
     }
 
 

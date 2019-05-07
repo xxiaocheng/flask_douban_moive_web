@@ -1,17 +1,19 @@
 import datetime
 import json
 import math
+import os
 
 import requests
-from flask import abort, g, redirect, url_for
+from flask import abort, current_app, g, redirect, url_for
 from flask_restful import Resource, reqparse
 from mongoengine.errors import ValidationError
 from mongoengine.queryset.visitor import Q
+from werkzeug.datastructures import FileStorage
 
 from app.extensions import api, cache
 from app.helpers.redis_utils import *
-from app.helpers.utils import query_by_id_list
-from app.models import Movie, Rating, Tag, User, Cinema, Follow
+from app.helpers.utils import query_by_id_list, rename_image
+from app.models import Celebrity, Cinema, Follow, Movie, Rating, Tag, User
 
 from .auth import auth, email_confirm_required, permission_required
 from .schemas import (items_schema, movie_schema, movie_summary_schema,
@@ -364,17 +366,17 @@ class MovieInfo(Resource):
                 'message': 'movie not found'
             }, 404
 
-    # @auth.login_required
-    # @permission_required('DELETED_MOVIE')
+    @auth.login_required
+    @permission_required('DELETE_MOVIE')
     def delete(self, movieid):
         try:
-            n = Movie.objects(id=movieid, is_deleted=False).update(
-                is_deleted=True)
+            movie= Movie.objects(id=movieid, is_deleted=False).first()
         except ValidationError:
             return{
                 'message': 'illegal movieid'
             }, 402
-        if n == 1:
+        if movie:
+            movie.delete_self()
             return {
                 'message': 'delete this movie successfuly '
             }
@@ -384,20 +386,6 @@ class MovieInfo(Resource):
 
 
 api.add_resource(MovieInfo, '/movie/<movieid>')
-
-
-# class MovieAction(Resource):
-
-#     # # @auth.login_required
-#     # # @permission_required('UPLOAD_MOVIE')
-#     # def post(self):
-#     #     # 添加一个新的电影
-#     #     return{
-#     #         'message': 'add  movie here'
-#     #     }
-
-
-# api.add_resource(MovieAction, '/movie')
 
 
 class UserInterestMovie(Resource):
@@ -551,10 +539,112 @@ class FollowFeed(Resource):
                 '.followfeed',  page=args['page']+1, per_page=args['per_page'], _external=True)
 
         first = url_for(
-            '.followfeed', page=1, perpage=args['per_page'], _external=True)
+            '.followfeed', page=1, per_page=args['per_page'], _external=True)
         last = url_for(
-            '.followfeed', page=pagination.pages, perpage=args['per_page'], _external=True)
+            '.followfeed', page=pagination.pages, per_page=args['per_page'], _external=True)
         return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
 
 
-api.add_resource(FollowFeed,'/feed')
+api.add_resource(FollowFeed, '/feed')
+
+
+class UploadMovie(Resource):
+
+    @auth.login_required
+    @permission_required('UPLOAD')
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('douban_id', default='', type=str, location='form')
+        parser.add_argument('title', type=str, required=True, location='form')
+        parser.add_argument('subtype', choices=[
+                            'movie', 'tv'], required=True, location='form')
+        parser.add_argument('year', type=int, required=True, location='form')
+        parser.add_argument('image', required=True,
+                            type=FileStorage, location='files')
+        parser.add_argument('countries', required=True,
+                            type=str, location='form')
+        parser.add_argument('genres', required=True, type=str, location='form')
+        parser.add_argument('original_title', default='',
+                            type=str, location='form')
+        parser.add_argument('summary', required=True,
+                            type=str, location='form')
+        parser.add_argument('aka', default='', type=str, location='form')
+        parser.add_argument('directors', required=True,
+                            type=str, location='form')
+        parser.add_argument('casts', required=True, type=str, location='form')
+        parser.add_argument('seasons_count', type=int, location='form')
+        parser.add_argument('episodes_count',  type=int, location='form')
+        parser.add_argument('current_season',  type=int, location='form')
+        args = parser.parse_args()
+
+        # parse image
+        image_ext = os.path.splitext(args['image'].filename)[1]
+        if image_ext not in current_app.config['UPLOAD_IMAGE_EXT']:
+            return{
+                'message': 'file type error',
+                'type': image_ext
+            }, 403
+        image_filename = rename_image(args['image'].filename)
+
+        with open(os.path.join(current_app.config['MOVIE_IMAGE_UPLOAD_PATH'], image_filename), 'wb') as f:
+            args['image'].save(f)
+        # parse country
+        countries = args.countries.split(' ')
+
+        # parse tags
+        genres_text = args.genres.split(' ')
+        genres = []
+        for tag_name in genres_text:
+            if tag_name != '':
+                tag = Tag.objects(name=tag_name, cate=1).first()
+                if tag:
+                    genres.append(tag)
+                else:
+                    Tag(name=tag_name, cate=1).save()
+                    tag = Tag.objects(name=tag_name, cate=1).first()
+                    genres.append(tag)
+
+        # parse aka
+        if args.aka:
+            aka = args.aka.split(' ')
+        else:
+            aka = []
+
+        # parse directors
+        try:
+            directors = [Celebrity.objects(
+                id=id, is_deleted=False).first() for id in args.directors.split(' ') if args.genres and id != '']
+        except ValidationError:
+            directors = []
+            return {
+                'message': '导演信息不正确'
+            }, 400
+
+        # parse casts:
+        try:
+            casts = [Celebrity.objects(id=id, is_deleted=False).first()
+                     for id in args.casts.split(' ') if args.casts and id != '']
+        except ValidationError:
+            casts = []
+            return{
+                'message': '演员信息不正确'
+            }, 400
+
+        if args.subtype == 'tv':
+            Movie(douban_id=args.douban_id, title=args.title, subtype=args.subtype,
+                  year=args.year, image=image_filename, countries=countries, genres=genres,
+                  original_title=args.original_title, summary=args.summary,
+                  aka=aka, directors=directors, casts=casts, seasons_count=args.seasons_count,
+                  episodes_count=args.episodes_count, current_season=args.current_season).save()
+        else:
+            Movie(douban_id=args.douban_id, title=args.title, subtype=args.subtype,
+                  year=args.year, image=image_filename, countries=countries, genres=genres,
+                  original_title=args.original_title, summary=args.summary,
+                  aka=aka, directors=directors, casts=casts).save()
+
+        return {
+            'message': '添加影视信息成功'
+        }
+
+
+api.add_resource(UploadMovie, '/movie')

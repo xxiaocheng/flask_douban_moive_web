@@ -21,9 +21,11 @@ class Role(db.Document):
     def init_role():
         roles_permissions_map = {
             'Locked':[],
-            'User': ['FOLLOW', 'COLLECT', 'COMMENT', 'UPLOAD'],
-            'Moderator': ['FOLLOW', 'COLLECT', 'COMMENT', 'UPLOAD', 'MODERATE','SET_ROLE'],
-            'Administrator': ['FOLLOW', 'COLLECT', 'COMMENT', 'UPLOAD', 'MODERATE', 'ADMINISTER','LOCK','SET_ROLE']
+            'User': ['FOLLOW', 'COLLECT', 'COMMENT'],
+            'Moderator': ['FOLLOW', 'COLLECT', 'COMMENT', 'UPLOAD', 
+                            'MODERATE','SET_ROLE','HANDLE_REPORT','DELETE_CELEBRITY','DELETE_MOVIE','DELETE_MOVIE'],
+            'Administrator': ['FOLLOW', 'COLLECT', 'COMMENT', 'UPLOAD',
+                             'MODERATE', 'ADMINISTER','LOCK','SET_ROLE','HANDLE_REPORT','DELETE_CELEBRITY','DELETE_MOVIE','DELETE_MOVIE']
         }
 
         for role_name in roles_permissions_map:
@@ -414,11 +416,11 @@ class Movie(db.Document):
     collect_by_count = db.IntField(default=0)
     year = db.IntField()
     image = db.StringField(deault='deault.png')
-    seasons_count = db.IntField()
-    episodes_count = db.IntField()
+    seasons_count = db.IntField() #总季数
+    episodes_count = db.IntField()  #多少集
     countries = db.ListField()
     genres = db.ListField(db.ReferenceField(Tag))  # 标签
-    current_season = db.IntField()
+    current_season = db.IntField()  #当前第几季
     original_title = db.StringField()
     summary = db.StringField()
     aka = db.ListField()
@@ -444,19 +446,12 @@ class Movie(db.Document):
         super().__repr__()
         return '<%s: Movie object>' % self.title
 
-    def delete_this(self):
+    def delete_self(self):
         ratings = Rating.objects(movie=self, is_deleted=False)
         for rating in ratings:
-            rating.update(is_deleted=True)
-            category = rating.category
-            if category == 0:
-                rating.user.update(dec__wish_count=1)
-            if category == 1:
-                rating.user.update(dec__do_count=1)
-            if category == 2:
-                rating.user.update(dec__collect_count=1)
-        self.update(is_deleted=True, wish_by_count=0, do_by_count=0,
-                    collect_by_count=0, score=0, rating_count=0)
+            rating.delete_self()
+
+        self.update(is_deleted=True)
 
 
 class Follow(db.Document):

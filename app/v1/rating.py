@@ -1,11 +1,11 @@
-from flask import g
+from flask import g,url_for
 from flask_restful import Resource, reqparse
 
 from app.extensions import api
 from app.models import Rating
 
 from .auth import auth, permission_required
-from .schemas import items_schema, rating_schema
+from .schemas import items_schema, rating_schema_on_user
 from mongoengine.errors import ValidationError
 
 class RatingAction(Resource):
@@ -76,51 +76,49 @@ class RatingAction(Resource):
             return{
                 'message': 'rating not found'
             }, 404
-
-        if rating.user == user or user.check_permission("HANDLE_REPORT"):
+        if user==rating.user or user.check_permission('HANDLE_REPORT'):
             rating.delete_self()
             return{
                 'message': '评价已删除!'
             }
         else:
-            return {
-                'message': 'permission required.'
-            }, 400
-
+            return{
+                'smessage':'permission required'
+            },403
 
 api.add_resource(RatingAction, '/rating/<ratingid>')
 
 
 class ReportRating(Resource):
 
-    # @auth.login_required
-    # @permission_required('HANDLE_REPORT')
+    @auth.login_required
+    @permission_required('HANDLE_REPORT')
     def get(self):
         # 查看所有被举报的评分
         parser = reqparse.RequestParser()
         parser.add_argument('page', default=1, type=int, location='args')
         parser.add_argument('per_page', default=20, type=int, location='args')
         args = parser.parse_args()
-        pagination = Rating.objects(report_count__gt=0).order_by(
-            '-report_count').paginate()
+        pagination = Rating.objects(report_count__gt=0,is_deleted=False).order_by(
+            '-report_count').paginate(page=args.page,per_page=args.per_page)
 
-        items = [rating_schema(rating)
+        items = [rating_schema_on_user(rating)
                  for rating in pagination.items]
 
         prev = None
         if pagination.has_prev:
             prev = url_for(
-                '.reportrating', movieid=movieid, category=category, sort=args['sort'], page=args['page']-1, per_page=args['per_page'], _external=True)
+                '.reportrating',page=args['page']-1, per_page=args['per_page'], _external=True)
 
         next = None
         if pagination.has_next:
             prev = url_for(
-                '.reportrating', movieid=movieid, category=category, sort=args['sort'],  page=args['page']+1, per_page=args['per_page'], _external=True)
+                '.reportrating',  page=args['page']+1, per_page=args['per_page'], _external=True)
 
         first = url_for(
-            '.reportrating', movieid=movieid, category=category, sort=args['sort'], page=1, perpage=args['per_page'], _external=True)
+            '.reportrating', page=1, perpage=args['per_page'], _external=True)
         last = prev = url_for(
-            '.reportrating', movieid=movieid, category=category, sort=args['sort'], page=pagination.pages, perpage=args['per_page'], _external=True)
+            '.reportrating',  page=pagination.pages, perpage=args['per_page'], _external=True)
         return items_schema(items, prev, next, first, last, pagination.total, pagination.pages)
 
 

@@ -6,8 +6,8 @@ from app.extensions import cache
 
 class Tags(Resource):
     
-    # @auth.login_required
-    # @permission_required('UPLOAD_TAG')
+    @auth.login_required
+    @permission_required('UPLOAD')
     def post(self):
         parser=reqparse.RequestParser()
         parser.add_argument('tagname',required=True,location='form',type=str)
@@ -23,21 +23,21 @@ class Tags(Resource):
             },403
 
 
-    # @auth.login_required
-    # @permission_required('DELETED_TAG')
-    def delete(self):
-        parser=reqparse.RequestParser()
-        parser.add_argument('tagname',required=True,location='form',type=str)
-        args=parser.parse_args()
-        n=Tag.objects(name=args['tagname'],cate=1).delete()
-        if n==1:
-            return{
-                'message':'delete this tag successfuly'
-            }
-        else:
-            return{
-                'message':'this tag not exist'
-            },403
+    # # @auth.login_required
+    # # @permission_required('DELETED_TAG')
+    # def delete(self):
+    #     parser=reqparse.RequestParser()
+    #     parser.add_argument('tagname',required=True,location='form',type=str)
+    #     args=parser.parse_args()
+    #     n=Tag.objects(name=args['tagname'],cate=1).delete()
+    #     if n==1:
+    #         return{
+    #             'message':'delete this tag successfuly'
+    #         }
+    #     else:
+    #         return{
+    #             'message':'this tag not exist'
+    #         },403
     
     @cache.cached(timeout=60*60*24,query_string=True)
     def get(self):

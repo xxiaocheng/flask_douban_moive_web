@@ -12,7 +12,7 @@ class Operations:
 
 
 class BaseConfig(object):
-    SECRET_KEY = os.getenv('SECRET_KEY', 'secret stringos')
+    SECRET_KEY = os.getenv('SECRET_KEY', 'secret strings')
     MONGODB_SETTINGS={
         'db':os.getenv('MONGODB_DB','doubanmovie'),
         'host':os.getenv('MONGODB_HOST','127.0.0.1'),
@@ -44,7 +44,7 @@ class BaseConfig(object):
     # sendgrid
     EMAIL_SENDER='noreply@miaomovie.com'
 
-    EXPIRATION=60*60*24
+    EXPIRATION=60*60*24*7  #token 过期时间为一周
 
     #APScheduler
     # SCHEDULER_API_ENABLED = True
@@ -109,12 +109,13 @@ class TestingConfig(BaseConfig):
     }
     ADMIN_EMAIL='cxxlxx0@gmail.com'
 
-class ProductionCofig(BaseConfig):
-    pass
+class ProductionConfig(BaseConfig):
+    ADMIN_EMAIL='cxxlxx0@gmail.com'
+    
 
 
 config={
     'development':DevelopmentConfig,
     'testing':TestingConfig,
-    'production':ProductionCofig
+    'production':ProductionConfig
 }
