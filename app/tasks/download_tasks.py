@@ -40,7 +40,6 @@ def _get_cinema_movie(url, cate):
         if subjects:
             for movie_obj in subjects:
                 try:
-                    print(movie_obj.get('id'))
                     if not redis_store.sismember('downloaded:movie',movie_obj.get('id')):
                         download_movie(movie_obj.get('id'))
                         time.sleep(10)
@@ -198,9 +197,7 @@ def get_douban_user_import_from_redis():
             task_json=json.loads(redis_store.spop('task:douban').decode())
             user=User.objects(username=task_json['user']).first()
         
-        print(1)
         collect_list,wish_list,do_list= get_user_profile_movies(task_json['douban_id'])
-        print(2)
         for collect_movie_id in collect_list:
             time.sleep(10)    # 睡眠五秒,避免爬取速度过快爬虫被ban
             download_movie(collect_list)

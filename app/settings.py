@@ -82,10 +82,6 @@ class BaseConfig(object):
         }
         
     ]
-    SCHEDULER_EXECUTORS = {
-        'default': {'type': 'threadpool', 'max_workers': 100}
-    }
-
     # image can upload with ext
     UPLOAD_IMAGE_EXT=['.jpg','.png','.jpeg']
 

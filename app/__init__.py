@@ -1,10 +1,12 @@
 import os
+import threading
 
 from flask import Flask,jsonify
 
 from app.extensions import avatars, cache, cors, db,api,redis_store,scheduler
 from app.v1 import api_bp
 from app.settings import config
+from app.tasks.download_tasks import get_all_cinema_movie
 
 def create_app(config_name=None):
     if config_name is None:
@@ -17,6 +19,8 @@ def create_app(config_name=None):
     register_extensions(app)
     register_blueprints(app)
     register_errorhandlers(app)
+    t=threading.Thread(target=get_all_cinema_movie)
+    t.start()
     return app
 
 def register_extensions(app):
