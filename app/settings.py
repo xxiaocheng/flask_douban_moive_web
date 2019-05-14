@@ -31,7 +31,7 @@ class BaseConfig(object):
 
     #upload dir
     AREA_DATA_PATH=os.path.join(basedir,'app');
-    UPLOAD_PATH = os.path.join(basedir, 'uploads')
+    UPLOAD_PATH = os.path.join(basedir, 'images')
     AVATAR_UPLOAD_PATH=os.path.join(UPLOAD_PATH,'avatar')
     MOVIE_IMAGE_UPLOAD_PATH=os.path.join(UPLOAD_PATH,'movie')
     CELEBRITY_IMAGE_UPLOAD_PATH=os.path.join(UPLOAD_PATH,'celebrity')

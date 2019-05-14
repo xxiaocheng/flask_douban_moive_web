@@ -3,6 +3,9 @@ import threading
 
 from flask import Flask,jsonify
 
+import logging
+from logging.handlers import RotatingFileHandler
+
 from app.extensions import avatars, cache, cors, db,api,redis_store,scheduler
 from app.v1 import api_bp
 from app.settings import config
@@ -19,6 +22,7 @@ def create_app(config_name=None):
     register_extensions(app)
     register_blueprints(app)
     register_errorhandlers(app)
+    register_logger(app)
     t=threading.Thread(target=get_all_cinema_movie)
     t.start()
     return app
@@ -70,3 +74,15 @@ def register_errorhandlers(app):
         response=jsonify(message='Internal Server Error')
         response.status_code=500
         return response
+
+def register_logger(app):
+    app.logger.setLevel(logging.INFO)
+
+    formatter=logging.Formatter("%(asctime)s - %(name)s-%(levelnamed)s-%(message)s")
+
+    file_handler=RotatingFileHandler('logs/douban-movie.log',maxBytes=10*1024*1024,backupCount=10) # 10个文件全部满10兆会覆盖之前的日志文件
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(logging.INFO)
+
+    if not app.debug:
+        app.logger.addHandler(file_handler)
