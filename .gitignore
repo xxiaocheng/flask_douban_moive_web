@@ -107,6 +107,9 @@ venv.bak/
 # pycharm
 /.idea
 
+# vscode setting
+.vscode
+
 *.png
 *.jpg
 *.jpeg
