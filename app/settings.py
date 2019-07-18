@@ -1,5 +1,4 @@
 import os
-import sys
 
 
 basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
@@ -43,6 +42,8 @@ class BaseConfig(object):
 
     # sendgrid
     EMAIL_SENDER='noreply@miaomovie.com'
+    SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY')
+
 
     EXPIRATION=60*60*24*7  #token 过期时间为一周
 

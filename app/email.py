@@ -1,4 +1,3 @@
-import os
 from flask import current_app
 from sendgrid.helpers.mail import Email,Content,Mail
 from sendgrid import SendGridAPIClient
@@ -12,7 +11,7 @@ def send_email(subject,to,html_body):
     @param body :邮件主体部分 
     @return ``response``
     """
-    sg=SendGridAPIClient(apikey=os.environ.get('SENDGRID_API_KEY'))
+    sg=SendGridAPIClient(apikey=current_app.config['SENDGRID_API_KEY'])
     from_email=Email(current_app.config['EMAIL_SENDER'])
     to_email=Email(to)
     html_content=Content('text/html',html_body)
