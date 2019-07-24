@@ -28,6 +28,7 @@ fake-useragent = "*"
 sendgrid = "==5.6.0"
 pillow = "*"
 flask-avatars = "*"
+gunicorn = "*"
 
 [requires]
 python_version = "3.6"

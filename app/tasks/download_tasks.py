@@ -14,7 +14,7 @@ from app.helpers.user_movies_profile import get_user_profile_movies
 from app.helpers.utils import download_image_from_url
 from app.models import Celebrity, Movie, Notification, Tag, User,Cinema
 
-ua = UserAgent()
+ua = UserAgent(verify_ssl=False)
 
 headers = {'user-agent': ua.random}
 

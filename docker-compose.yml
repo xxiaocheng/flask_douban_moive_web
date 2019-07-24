@@ -1,0 +1,52 @@
+version: "3"
+services:
+  web:
+    build: ./
+    depends_on:
+      - redis
+      - mongo
+    volumes:
+      - "./images:/app/images"
+    env_file: .env
+    # ports:
+    #   - "5000:5000"
+    expose:
+      - "5000"
+    command: gunicorn -w 1 -b :5000 wsgi:app
+
+  nginx:
+    container_name: nginx
+    restart: always
+    build: ./nginx
+    volumes:
+      - "./data/nginx:/var/log/nginx"
+    ports:
+      - "80:80"
+    depends_on:
+      - web
+
+  redis:
+    image: redis
+    # ports:
+    #   - "6379:6379"
+    expose:
+      - "6379"
+    volumes:
+      - "./data/redis:/data"
+
+    restart: always
+    command: redis-server --appendonly yes
+
+  mongo:
+    image: mongo
+    environment:
+      - MONGO_DATA_DIR=/data/db
+      - MONGO_LOG_DIR=/dev/null
+    # ports:
+    #   - "27017:27017"
+    expose:
+      - "27017"
+    volumes:
+      - "./data/mongodb:/data/db"
+    command: mongod --smallfiles --logpath=/dev/null
+
