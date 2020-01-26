@@ -10,6 +10,8 @@ flask-shell-ipython = "*"
 faker = "*"
 autopep8 = "*"
 rope = "*"
+flake8 = "*"
+coverage = "*"
 
 [packages]
 flask = "*"
@@ -29,6 +31,9 @@ sendgrid = "==5.6.0"
 pillow = "*"
 flask-avatars = "*"
 gunicorn = "*"
+flask-sqlalchemy = "*"
+pymysql = "*"
+flask-migrate = "*"
 
 [requires]
 python_version = "3.6"

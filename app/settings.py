@@ -47,44 +47,57 @@ class BaseConfig(object):
 
     EXPIRATION=60*60*24*7  #token 过期时间为一周
 
-    #APScheduler
-    # SCHEDULER_API_ENABLED = True
-    JOBS=[
-        # 
-        # {导入豆瓣用户信息 
-        #     'id': 'download_douban_user_info',
-        #     'func': 'app.tasks.download_tasks:get_douban_user_import_from_redis',
-        #     'trigger': 'interval',
-        #     'seconds': 60*60*24 # 一天执行一次
-        # },
-        {
-            'id': 'download_celebrity',
-            'func': 'app.tasks.download_tasks:download_celebrity_from_redis',
-            'trigger': 'interval',
-            'seconds': 60*60*24 # 一天执行一次
-        },
-        {
-            'id': 'download_images',
-            'func': 'app.tasks.download_tasks:download_image_from_redis',
-            'trigger': 'interval',
-            'seconds': 10 # 一天执行一次
-        },
-        {
-            'id': 'download_cinema_movie',
-            'func': 'app.tasks.download_tasks:get_all_cinema_movie',
-            'trigger': 'interval',
-            'seconds': 60*60*24 # 一天执行一次
-        },
-        {
-            'id': 'send_email_job',
-            'func': 'app.tasks.email_tasks:handle_email',
-            'trigger': 'interval',
-            'seconds': 10
-        }
+    ROLES_PERMISSIONS_MAP = {
+        'Locked': [None],
+        'User': ['FOLLOW', 'COLLECT', 'COMMENT'],
+        'Moderator': ['FOLLOW', 'COLLECT', 'COMMENT', 'UPLOAD',
+                      'MODERATE', 'SET_ROLE', 'HANDLE_REPORT', 'DELETE_CELEBRITY', 'DELETE_MOVIE', 'DELETE_MOVIE'],
+        'Administrator': ['FOLLOW', 'COLLECT', 'COMMENT', 'UPLOAD',
+                          'MODERATE', 'ADMINISTER', 'LOCK', 'SET_ROLE', 'HANDLE_REPORT', 'DELETE_CELEBRITY',
+                          'DELETE_MOVIE']
+    }
+
+    # #APScheduler
+    # # SCHEDULER_API_ENABLED = True
+    # JOBS=[
+    #     # 
+    #     # {导入豆瓣用户信息 
+    #     #     'id': 'download_douban_user_info',
+    #     #     'func': 'app.tasks.download_tasks:get_douban_user_import_from_redis',
+    #     #     'trigger': 'interval',
+    #     #     'seconds': 60*60*24 # 一天执行一次
+    #     # },
+    #     {
+    #         'id': 'download_celebrity',
+    #         'func': 'app.tasks.download_tasks:download_celebrity_from_redis',
+    #         'trigger': 'interval',
+    #         'seconds': 60*60*24 # 一天执行一次
+    #     },
+    #     {
+    #         'id': 'download_images',
+    #         'func': 'app.tasks.download_tasks:download_image_from_redis',
+    #         'trigger': 'interval',
+    #         'seconds': 10 # 一天执行一次
+    #     },
+    #     {
+    #         'id': 'download_cinema_movie',
+    #         'func': 'app.tasks.download_tasks:get_all_cinema_movie',
+    #         'trigger': 'interval',
+    #         'seconds': 60*60*24 # 一天执行一次
+    #     },
+    #     {
+    #         'id': 'send_email_job',
+    #         'func': 'app.tasks.email_tasks:handle_email',
+    #         'trigger': 'interval',
+    #         'seconds': 10
+    #     }
         
-    ]
+    # ]
     # image can upload with ext
     UPLOAD_IMAGE_EXT=['.jpg','.png','.jpeg']
+
+    # SQLALCHEMY DATABASE SETTINGS
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 class DevelopmentConfig(BaseConfig):
     ADMIN_EMAIL='cxxlxx0@gmail.com'
@@ -96,7 +109,12 @@ class DevelopmentConfig(BaseConfig):
         'password':os.getenv('MONGODB_PASSWORD')
     }
 
+    # SQLALCHEMY DATABASE SETTINGS
+    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://root:4399@127.0.0.1:3306/movies_recommend_system_dev"
+
 class TestingConfig(BaseConfig):
+    TESTING = True
+
     MONGODB_SETTINGS={
         'db':os.getenv('MONGODB_DB','doubanmovieTest'),
         'host':os.getenv('MONGODB_HOST','localhost'),
@@ -106,9 +124,14 @@ class TestingConfig(BaseConfig):
     }
     ADMIN_EMAIL='cxxlxx0@gmail.com'
 
+    # SQLALCHEMY DATABASE SETTINGS
+    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://root:4399@127.0.0.1:3306/movies_recommend_system_test"
+
 class ProductionConfig(BaseConfig):
     ADMIN_EMAIL='cxxlxx0@gmail.com'
-    
+
+    # SQLALCHEMY DATABASE SETTINGS
+    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://root:4399@127.0.0.1:3306/movies_recommend_system"    
 
 
 

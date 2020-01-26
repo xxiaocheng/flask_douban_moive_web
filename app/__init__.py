@@ -6,10 +6,14 @@ from flask import Flask,jsonify
 import logging
 from logging.handlers import RotatingFileHandler
 
-from app.extensions import avatars, cache, cors, db,api,redis_store,scheduler
+from app.extensions import avatars, cache, cors, db, api, redis_store, sql_db, migrate
 from app.v1 import api_bp
 from app.settings import config
 from app.tasks.download_tasks import get_all_cinema_movie
+
+# migrate the databases
+from app.sql_models import User
+
 
 def create_app(config_name=None):
     if config_name is None:
@@ -20,12 +24,13 @@ def create_app(config_name=None):
     app.config.from_object(config[config_name])
     
     register_extensions(app)
-    register_blueprints(app)
+    # register_blueprints(app) # not work when test
     register_errorhandlers(app)
     register_logger(app)
-    t=threading.Thread(target=get_all_cinema_movie)
-    t.start()
+    # t=threading.Thread(target=get_all_cinema_movie)
+    # t.start()
     return app
+
 
 def register_extensions(app):
     cors.init_app(app)
@@ -33,10 +38,14 @@ def register_extensions(app):
     cache.init_app(app)
     avatars.init_app(app)
     redis_store.init_app(app)
-    api.init_app(api_bp)   # flask_restful 文档关于蓝本的用法
-    # flask_apscheduler
-    scheduler.init_app(app)
-    scheduler.start()
+    sql_db.init_app(app)
+    migrate.init_app(app, db=sql_db)
+    
+    api.init_app(api_bp)   # flask_restful 文档关于蓝本的用法    
+    # # flask_apscheduler
+    # scheduler.init_app(app)
+    # scheduler.start()
+
     redis_store.app=app #为了发送邮件部分能够在程序上下文中运行
 
 
