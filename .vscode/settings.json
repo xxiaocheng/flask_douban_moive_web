@@ -1,9 +1,9 @@
 {
-    "python.pythonPath": "/Users/xiachufang/.local/share/virtualenvs/flask_douban_moive_web-70c-dXe_/bin/python",
+    "python.pythonPath": "/home/xiao/.local/share/virtualenvs/flask_douban_moive_web-pwyvLwku/bin/python",
     "python.testing.unittestArgs": [
         "-v",
         "-s",
-        "./test",
+        "./tests",
         "-p",
         "test_*.py"
     ],
