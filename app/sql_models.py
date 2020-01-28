@@ -1,18 +1,22 @@
+import hashlib
 from datetime import datetime
 
-from app.extensions import sql_db as db
+from flask import current_app
 from flask_sqlalchemy import BaseQuery
+from itsdangerous import BadSignature, SignatureExpired
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from sqlalchemy import or_
 from sqlalchemy.sql import func
-from flask import current_app
-
 from werkzeug.security import check_password_hash, generate_password_hash
-from itsdangerous import TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired
+
+from app.const import (ROLES_PERMISSIONS_MAP, MovieCinemaStatus, MovieType,
+                       NotificationType, RatingType, GenderType)
+from app.extensions import sql_db as db
 
 
 class QueryWithSoftDelete(BaseQuery):
     """
-    Soft-Delete query class
+    Soft-Delete query base class
     """
     _with_deleted = False
 
@@ -79,12 +83,6 @@ class UserRole(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
 
-#
-# user_role = db.Table('user_role',
-#                      db.Column('user_id', db.Integer, db.ForeignKey('users.id')),
-#                      db.Column('role_id', db.Integer, db.ForeignKey('roles.id'))
-#                      )
-
 
 class Role(MyBaseModel):
     """
@@ -99,19 +97,13 @@ class Role(MyBaseModel):
 
     @staticmethod
     def init_role():
-        roles_permissions_map = current_app.config['ROLES_PERMISSIONS_MAP']
-        for _role_name, _permissions in roles_permissions_map.items():
+        for _role_name, _permissions in ROLES_PERMISSIONS_MAP.items():
             for _permission in _permissions:
                 if not Role.query.filter(Role.role_name == _role_name).filter(Role.permission == _permission).first():
                     role = Role(role_name=_role_name, permission=_permission)
                     db.session.add(role)
         db.session.commit()
 
-
-# class Follower(MyBaseModel):
-#     __tablename__ = 'followers'
-#     follower_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-#     followed_id = db.Column(db.Integer, db.ForeignKey('users.id'))
 
 followers = db.Table('followers',
                      db.Column('id', db.Integer, primary_key=True,
@@ -125,6 +117,38 @@ followers = db.Table('followers',
                      )
 
 
+class Notification(MyBaseModel):
+    receiver_user_id = db.Column(
+        db.Integer, db.ForeignKey("users.id"), nullable=False)
+    action_user_id = db.Column(
+        db.Integer, db.ForeignKey("users.id"), nullable=False)
+    is_read = db.Column(db.Boolean(), default=False)
+    category = db.Column(db.Integer)  # must be in `NotificationType`
+    information_text = db.Column(db.Text)  # not used
+
+    @staticmethod
+    def create_one_notification(receiver_id, action_user_id, category):
+        """
+        add action to Notification
+        :param receiver_id: User.id
+        :param action_user_id: user send this notification
+        :param category: NotificationType.FOLLOW or .RATING_ACTION
+        :return: Notification or None
+        """
+        if category not in [NotificationType.FOLLOW, NotificationType.RATING_ACTION]:
+            return None
+        notification = Notification.query.filter_by(
+            receiver_id=receiver_id, action_user_id=action_user_id, category=category, deleted=False).first()
+        if not notification:
+            notification = Notification(
+                receiver_id=receiver_id, action_user_id=action_user_id, category=category, deleted=False)
+            return notification
+        return None
+
+    def delete_self(self):
+        super(Rating, self).delete_self()
+
+
 class User(MyBaseModel):
     __tablename__ = 'users'
 
@@ -133,20 +157,21 @@ class User(MyBaseModel):
     password_hash = db.Column(db.String(128), nullable=False)
     # location = db.Column(db.Integer, nullable=True)
     last_login_time = db.Column(db.DateTime, default=datetime.utcnow)
-    avatar_url = db.Column(db.String(128))
+    avatar_url_last = db.Column(db.String(128))
     email_confirmed = db.Column(db.Boolean(), default=False, nullable=False)
     signature = db.Column(db.Text)
     roles = db.relationship('Role', secondary="user_role",
-                            backref=db.backref('users', lazy=True))
+                            backref=db.backref('users', lazy='dynamic'), lazy=True)
     followed = db.relationship('User', secondary='followers',
                                primaryjoin='followers.c.follower_id == User.id',
                                secondaryjoin='followers.c.followed_id == User.id',
                                backref=db.backref('followers', lazy='dynamic'),
                                lazy='dynamic')
 
+    # Danger: with soft deleted
     ratings = db.relationship('Rating', backref='user', lazy='dynamic')
     notifications = db.relationship(
-        'Notification', backref='user', lazy='dynamic')
+        'Notification', foreign_keys=[Notification.receiver_user_id], backref='user', lazy='dynamic')
 
     def __repr__(self):
         return '<User %r>' % self.username
@@ -190,7 +215,7 @@ class User(MyBaseModel):
     @staticmethod
     def create_user(username, email, password):
         """
-        create one user from params and commit session
+        create one user from params but not commit session
         :param username: username unique
         :param email: email unique
         :param password: password
@@ -202,8 +227,6 @@ class User(MyBaseModel):
             return None
         current_user = User(username=username, email=email)
         current_user.password_hash = generate_password_hash(password)
-        db.session.add(current_user)
-        db.session.commit()
         return current_user
 
     def change_email(self, new_email):
@@ -236,9 +259,6 @@ class User(MyBaseModel):
         """
         return check_password_hash(self.password_hash, password)
 
-    def _generate_avatar(self):
-        pass
-
     def _set_role(self):
         """
         set role for user when create a user.
@@ -254,6 +274,10 @@ class User(MyBaseModel):
             self.roles += current_roles
 
     def change_user_role(self, role_name):
+        """
+        change user`s role
+        :param role_name: ROLES_PERMISSIONS_MAP.keys()
+        """
         self.roles.clear()
         if Role.query.count() == 0:
             Role.init_role()
@@ -269,6 +293,10 @@ class User(MyBaseModel):
         if self.id != user.id:
             if not self.is_following(user):
                 self.followed.append(user)
+                notification = Notification.create_one_notification(
+                    user.id, self.id, NotificationType.FOLLOW)
+                if notification:
+                    user.notifications.append(notification)
                 return True
         return False
 
@@ -281,49 +309,95 @@ class User(MyBaseModel):
         if self.id != user.id:
             if self.is_following(user):
                 self.followed.remove(user)
+                notification = Notification.query.filter_by(
+                    receiver_user_id=user, action_user_id=self.id, category=NotificationType.FOLLOW)
+                if notification:
+                    notification.delete_self()
                 return True
         return False
 
     def is_following(self, user):
         """
+        current user is follow `user`
         :param user: User
         :return: True or False
         """
         return self.followed.filter(followers.c.followed_id == user.id).count() > 0
 
     def is_following_by(self, user):
+        """
+        current user is follow by `user`
+        :param user: User
+        :return: True or False
+        """
         return user.is_following(self)
 
     def wish_movie(self, movie, comment=None, tags=[]):
+        """
+        wish movir by rating
+        :param movie: Movie
+        :param comment: comment for rating
+        :param tags: list of tags
+        :return: True or False
+        """
+        if Rating.query.filter_by(movie_id=movie.id, user_id=self.id).first():
+            return None
         r = Rating.create_rating_with_tags(
-            score=0, comment=comment, category=0, tags=tags)
+            score=0, comment=comment, category=RatingType.WISH, tags=tags)
         r.movie_id = movie.id
-        r.user_id = self.id
-        return True
+        self.ratings.append(r)
+        return r
 
     def do_movie(self, movie, score=0, comment=None, tags=[]):
-        if movie.subtype != 'TV':
-            return False
+        """
+        do movir by rating
+        :param movie: Movie
+        :param score: score for rating
+        :param comment: comment for rating
+        :param tags: list of tags
+        :return: True or False
+        """
+        if Rating.query.filter_by(movie_id=movie.id, user_id=self.id).first():
+            return None
+        if movie.subtype != MovieType.TV:
+            return None
         r = Rating.create_rating_with_tags(
-            score=score, comment=comment, category=1, tags=tags)
+            score=score, comment=comment, category=RatingType.DO, tags=tags)
         r.movie_id = movie.id
-        r.user_id = self.id
-        return True
+        self.ratings.append(r)
+        return r
 
     def collect_movie(self, movie, score=0, comment=None, tags=[]):
+        """
+        collect movir by rating
+        :param movie: Movie
+        :param score: score for rating
+        :param comment: comment for rating
+        :param tags: list of tags
+        :return: True or False
+        """
+        if Rating.query.filter_by(movie_id=movie.id, user_id=self.id).first():
+            return None
         r = Rating.create_rating_with_tags(
-            score=0, comment=comment, category=2, tags=tags)
+            score=score, comment=comment, category=RatingType.COLLECT, tags=tags)
         r.movie_id = movie.id
-        r.user_id = self.id
-        return True
+        self.ratings.append(r)
+        return r
+
+    def ratings_not_deleted_query(self, *arg):
+        return self.ratings.filter_by(deleted=False, *arg)
 
     @property
     def is_locked(self):
+        """
+        test this user is locked or not
+        :return: True or False
+        """
         return self.roles[0].role_name == "LOCKED"
 
     def lock_this_user(self):
         """
-        Lock this user
+        lock this user
         """
         self.change_user_role('Locked')
 
@@ -331,24 +405,67 @@ class User(MyBaseModel):
         """Check Permission"""
         return permission.upper() in [role.permission for role in self.roles]
 
+    def _gen_email_hashgravatar(self, size=500):
+        """
+        generate avatar image url for user
+        :param email: User.email
+        :param size: size
+        :param default: default
+        :return: avatar url
+        """
+        email_hash = hashlib.md5(
+            self.email.lower().encode('utf-8')).hexdigest()
+        url = 'https://secure.gravatar.com/avatar'
+        return '{url}/{hash}?s={size}&d=identicon&r=g'.format(
+            url=url, hash=email_hash, size=size)
+
+    @property
+    def avatar_thumb(self):
+        """
+        thumb avatar
+        """
+        if not self.avatar_url_last:
+            return self._gen_email_hashgravatar(100)
+        else:
+            url = current_app.config['CHEVERETO_BASE_URL']
+            file_name = self.avatar_url_last.split('.')[0]
+            file_ext = self.avatar_url_last.split('.')[1]
+            return url+file_name+'.th.'+file_ext
+
+    @property
+    def avatar_image(self):
+        """
+        avatar image
+        """
+        if not self.avatar_url_last:
+            return self._gen_email_hashgravatar(1000)
+        else:
+            url = current_app.config['CHEVERETO_BASE_URL']
+            return url+self.avatar_url_last
+
+    def get_notifications_query_by_cate(self, category):
+        """
+        :param category: must be in NotificationType
+        """
+        self.notifications.filter_by(deleted=False, category=category)
+
     def delete_self(self):
         """
         delete self and commit
         """
         super(User, self).delete_self()
         self.roles.clear()
+        for user in self.followers.all():
+            user.unfollow(self)
+        for user in self.followed.all():
+            self.unfollow(user)
+        for notification in self.notifications:
+            notification.delete_self()
+        for rating in self.ratings:
+            rating.delete_self()
         db.session.commit()
         pass
         # TODO
-
-
-# rating_tags = db.Table('rating_tags',
-#                        db.Column('id', db.Integer, primary_key=True, autoincrement=True),
-#                        db.Column('rating_id'), db.Integer, db.ForeignKey('ratings.id'))
-#
-# movie_genres = db.Table('movie_genres',
-#                         db.Column('id', db.Integer, primary_key=True, autoincrement=True),
-#                         db.Column('movie_id'), db.Integer, db.ForeignKey('movies.id'))
 
 
 class Celebrity(MyBaseModel):
@@ -356,24 +473,56 @@ class Celebrity(MyBaseModel):
     douban_id = db.Column(db.Integer)
     imdb_id = db.Column(db.String(16))
     name = db.Column(db.String(128), nullable=False)
-    gender = db.Column(db.String(4))
-    avatar_url = db.Column(db.String(128))
+    gender = db.Column(db.Integer, default=GenderType.MALE)
+    avatar_url_last = db.Column(db.String(128), nullable=False)
     born_place = db.Column(db.String(32))
     name_en = db.Column(db.String(32))
-    aka_text = db.Column(db.Text)
-    aka_en_text = db.Column(db.Text)
+    aka_list = db.Column(db.Text)
+    aka_en_list = db.Column(db.Text)
 
+    @staticmethod
+    def create_one_celebrity(name, gender, avatar_url_last, douban_id=None, imdb_id=None, born_place=None, name_en=None, aka_list=[], aka_en_list=[]):
+        if Celebrity.query.filter(or_(Celebrity.douban_id == douban_id, Celebrity.imdb_id == imdb_id)).first():
+            return None
+        else:
+            celebrity = Celebrity(name=name, gender=gender, avatar_url_last=avatar_url_last, douban_id=douban_id,
+                                  imdb_id=imdb_id, born_place=born_place, name_en=name_en, aka_list=' '.join(
+                                      aka_list),
+                                  aka_en_list=' '.join(aka_en_list))
+            return celebrity
 
-class Country(MyBaseModel):
-    __tablename__ = 'countries'
-    country_name = db.Column(db.String(16), nullable=False)
-    movies = db.relationship('Movie', secondary="movie_country",
-                             backref=db.backref('countries', lazy=True))
+    @property
+    def avatar_url(self):
+        """
+        :return: avatar image url
+        """
+        url = current_app.config['CHEVERETO_BASE_URL']
+        return url+self.avatar_url_last
+
+    def delete_self(self):
+        super(Celebrity, self).delete_self()
+        for director_movie in self.director_movies:
+            director_movie.delete_self()
+        for celebrity_movie in self.celebrity_movies:
+            celebrity_movie.delete_self()
 
 
 class Genre(MyBaseModel):
     __tablename__ = 'genres'
     genre_name = db.Column(db.String(8), nullable=False)
+
+    @staticmethod
+    def create_one_by_genre_name(genre_name):
+        """
+        create a Country object, not commit session
+        :param country_name: country name
+        """
+        genre = Genre.query.filter_by(genre_name=genre_name).first()
+        if genre:
+            return genre
+        else:
+            genre = Genre(genre_name=genre_name)
+            return genre
 
 
 movie_genre = db.Table('movie_genres',
@@ -383,6 +532,7 @@ movie_genre = db.Table('movie_genres',
                                  db.ForeignKey('movies.id')),
                        db.Column('genre_id', db.Integer, db.ForeignKey('genres.id')))
 
+
 movie_celebrity = db.Table('movie_celebrities',
                            db.Column('id', db.Integer, primary_key=True,
                                      autoincrement=True),
@@ -390,6 +540,7 @@ movie_celebrity = db.Table('movie_celebrities',
                                      db.ForeignKey('movies.id')),
                            db.Column('celebrity_id', db.Integer,
                                      db.ForeignKey('celebrities.id')))
+
 
 movie_director = db.Table('movie_directors',
                           db.Column('id', db.Integer, primary_key=True,
@@ -408,55 +559,93 @@ movie_country = db.Table('movie_countries',
                          db.Column('country_id', db.Integer, db.ForeignKey('countries.id')))
 
 
+class Country(MyBaseModel):
+    __tablename__ = 'countries'
+    country_name = db.Column(db.String(16), nullable=False)
+    movies = db.relationship('Movie', secondary="movie_countries",
+                             backref=db.backref('countries', lazy=True))
+
+    @staticmethod
+    def create_one_by_country_name(country_name):
+        """
+        create a Country object, not commit session
+        :param country_name: country name
+        """
+        c = Country.query.filter_by(country_name=country_name).first()
+        if c:
+            return c
+        else:
+            c = Country(country_name=country_name)
+            return c
+
+
 class Movie(MyBaseModel):
     __tablename__ = 'movies'
-
     douban_id = db.Column(db.Integer)
     imdb_id = db.Column(db.String(16))
     title = db.Column(db.String(64), nullable=False)
     original_title = db.Column(db.String(64))
     subtype = db.Column(db.String(10), nullable=False)
     year = db.Column(db.Integer)
-    image_url = db.Column(db.String(128))
+    image_url_last = db.Column(db.String(128), nullable=False)
     seasons_count = db.Column(db.Integer)  # 季数
     episodes_count = db.Column(db.Integer)  # 集数
     current_season = db.Column(db.Integer)  # 当前第几季
     summary = db.Column(db.String(64))
-    # 0=finshed, 1=showing, 2=coming
-    cinema_status = db.Column(db.Integer, default=0)
-    aka_text = db.Column(db.Text)
+    # must be in MovieCinemaStatus
+    cinema_status = db.Column(db.Integer, default=MovieCinemaStatus.FINISHED)
+    aka_list = db.Column(db.Text)
+    # Danger: not filter by `deleted`
     ratings = db.relationship('Rating', backref='movie', lazy='dynamic')
-    genres = db.relationship('Genre', secondary="movie_genre",
+    genres = db.relationship('Genre', secondary="movie_genres",
                              backref=db.backref('movies', lazy='dynamic'), lazy=True)
-    directors = db.relationship('Celebrity', secondary="movie_director",
+    directors = db.relationship('Celebrity', secondary="movie_directors",
                                 backref=db.backref('director_movies', lazy='dynamic'), lazy=True)
-    celebrities = db.relationship('Celebrity', secondary="movie_celebrity",
+    celebrities = db.relationship('Celebrity', secondary="movie_celebrities",
                                   backref=db.backref('celebrity_movies', lazy='dynamic'), lazy=True)
+
+    @staticmethod
+    def create_one_movie(title, subtype, image_url_last, douban_id=douban_id, imdb_id=imdb_id, original_title=original_title, year=year, seasons_count=seasons_count, episodes_count=episodes_count, current_season=current_season, cinema_status=cinema_status, aka_list=aka_list):
+        if Movie.query.filter(or_(Movie.douban_id == douban_id, Movie.imdb_id == imdb_id)).first():
+            return None
+        else:
+            movie = Movie(title=title, subtype=subtype, image_url_last=image_url_last, douban_id=douban_id, imdb_id=imdb_id, original_title=original_title, year=year,
+                          seasons_count=seasons_count, episodes_count=episodes_count, current_season=current_season, cinema_status=cinema_status, aka_list=' '.join(aka_list))
+            return movie
 
     @property
     def score(self):
-        # query = self.ratings.filter_by(category=2).with_entities(func.avg(Rating.score)).all()
-        # return query
-        pass
+        score = self.ratings.filter_by(category=RatingType.COLLECT).with_entities(
+            func.avg(Rating.score)).all()[0][0]
+        try:
+            return float(score)
+        except TypeError:
+            return 0
 
     @property
-    def user_do(self):
-        pass
+    def user_do_rating_query(self):
+        return self.ratings.filter_by(deleted=False, category=RatingType.DO)
 
     @property
-    def user_wish(self):
-        pass
+    def user_wish_rating_query(self):
+        return self.ratings.filter_by(deleted=False, category=RatingType.WISH)
 
     @property
-    def user_collect(self):
-        pass
+    def user_collect_query(self):
+        return self.ratings.filter_by(deleted=False, category=RatingType.COLLECT)
+
+    @property
+    def image_url(self):
+        url = current_app.config['CHEVERETO_BASE_URL']
+        return url+self.image_url_last
 
     def __repr__(self):
         return '<Movie %r>' % self.title
 
     def delete_self(self):
         super(Movie, self).delete_self()
-        pass
+        for rating in self.ratings.filter_by(deleted=False):
+            rating.delete_self()
 
 
 class RatingTag(MyBaseModel):
@@ -474,14 +663,14 @@ class RatingLike(MyBaseModel):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     rating_id = db.Column(db.Integer, db.ForeignKey(
         'ratings.id'), nullable=False)
-    user = db.relationship('User', backref='rating_likes', lazy='dynamic')
+    user = db.relationship('User', backref='rating_likes', lazy=True)
 
 
 class RatingReport(MyBaseModel):
     __tablename__ = 'rating_reports'
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     rating_id = db.Column(db.Integer, db.ForeignKey('ratings.id'))
-    user = db.relationship('User', backref='rating_reports', lazy='dynamic')
+    user = db.relationship('User', backref='rating_reports', lazy=True)
 
 
 class Rating(MyBaseModel):
@@ -493,19 +682,19 @@ class Rating(MyBaseModel):
     comment = db.Column(db.Text, default='')
     category = db.Column(db.Integer, default=2)  # 0=wish, 1=do, 2=collect
     tags = db.relationship('RatingTag', backref='rating', lazy=True)
-    likes = db.relationship('RatingLike', backref='rating', lazy='dynamic')
-    reports = db.relationship('RatingReport', backref='rating', lazy='dunamic')
+    likes = db.relationship('RatingLike', backref='rating', lazy=True)
+    reports = db.relationship('RatingReport', backref='rating', lazy=True)
 
     def __repr__(self):
         return '<Rating %r>' % self.comment
 
     @staticmethod
-    def create_rating_with_tags(score=0, comment='', category=2, tags=[]):
+    def create_rating_with_tags(score=0, comment='', category=RatingType.COLLECT, tags=[]):
         """
         create one rating with tags but not commit
         :param score: score
         :param comment: comment
-        :parm category: category in (0, 1, 2), 0=wish, 1=do, 2=collect
+        :parm category: category must be in RatingType
         :return: r Rating
         """
         r = Rating(score=score, comment=comment, category=category)
@@ -525,6 +714,9 @@ class Rating(MyBaseModel):
         if rating_like:
             return None
         rating_like = RatingLike(user_id=user.id, arting_id=self.id)
+        notification = Notification.create_one_notification(
+            self.user.id, user.id, NotificationType.RATING_ACTION)
+        self.user.ratings.append(notification)
         return rating_like
 
     def unlike_by(self, user):
@@ -538,6 +730,9 @@ class Rating(MyBaseModel):
         if not rating_like:
             return False
         rating_like.delete_self()
+        notification = Notification.query.filter_by(
+            receiver_id=self.user.id, action_user_id=user.id, category=NotificationType.RATING_ACTION).first()
+        notification.delete_self()
         return True
 
     def report_by(self, user):
@@ -555,42 +750,3 @@ class Rating(MyBaseModel):
 
     def delete_self(self):
         super(Rating, self).delete_self()
-        # TODO
-
-
-class Notification(MyBaseModel):
-    receiver_id = db.Column(db.Integer, db.ForeignKey("users.id"))
-    is_read = db.Column(db.Boolean(), default=False)
-    information = db.Column(db.Integer)
-    category = db.Column(db.Integer)  # 0=follow, 1=rating
-
-    @staticmethod
-    def add_to_notification(receiver_id, information, category):
-        """
-        add action to Notification
-        :param receiver_id: User.id
-        :param information: Follow.id or RatingLike.id
-        :param category: 0 or 1 0=follow, 1=rating
-        :return: Notification or None
-        """
-        if category not in [0, 1]:
-            return None
-        notification = Notification.query.filter_by(
-            receiver_id=receiver_id, information=information, category=category).first()
-        if not notification:
-            notification = Notification(
-                receiver_id=receiver_id, information=information, category=category)
-            return notification
-        return None
-
-    @staticmethod
-    def cancel_notification(receiver_id, information, category):
-        if category not in [0, 1]:
-            return None
-        notification = Notification.query.filter_by(
-            receiver_id=receiver_id, information=information, category=category).first()
-        if not notification:
-            return False
-        else:
-            notification.delete_self()
-            return True

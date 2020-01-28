@@ -5,7 +5,8 @@ from faker import Faker
 from flask import current_app
 
 from app import create_app
-from app.sql_models import (User)
+from app.const import ROLES_PERMISSIONS_MAP, RatingType, MovieType, MovieCinemaStatus, GenderType
+from app.sql_models import (User, Movie, Celebrity, Rating, )
 from app.extensions import sql_db as db
 
 fake = Faker()
@@ -51,6 +52,8 @@ class UserModelsTestCase(unittest.TestCase):
     def test_auth_token_check(self):
         user_one = User.create_user(username="user_one",
                                     email=fake.email(), password='123456')
+        db.session.add(user_one)
+        db.session.commit()
         token = user_one.generate_token()
         current_user = User.verity_auth_token(token)
         self.assertIsNotNone(current_user)
@@ -68,10 +71,10 @@ class UserModelsTestCase(unittest.TestCase):
                                       email=current_app.config['ADMIN_EMAIL'], password='123456')
         user = User.create_user(username="user_one",
                                 email=fake.email(), password='123456')
-        for permission_name in current_app.config['ROLES_PERMISSIONS_MAP']['Administrator']:
+        for permission_name in ROLES_PERMISSIONS_MAP['Administrator']:
             self.assertTrue(admin_user.check_permission(permission_name))
 
-        for permission_name in current_app.config['ROLES_PERMISSIONS_MAP']['User']:
+        for permission_name in ROLES_PERMISSIONS_MAP['User']:
             self.assertTrue(user.check_permission(permission_name))
 
         self.assertFalse(user.check_permission('DELETE_MOVIE'))
@@ -79,7 +82,7 @@ class UserModelsTestCase(unittest.TestCase):
     def test_change_user_role(self):
         user = User.create_user(username="user_one",
                                 email=fake.email(), password='123456')
-        for permission_name in current_app.config['ROLES_PERMISSIONS_MAP']['User']:
+        for permission_name in ROLES_PERMISSIONS_MAP['User']:
             self.assertTrue(user.check_permission(permission_name))
         self.assertFalse(user.check_permission('DELETE_MOVIE'))
         db.session.add(user)
@@ -87,16 +90,16 @@ class UserModelsTestCase(unittest.TestCase):
 
         query_user = User.query.filter_by(username='user_one').first()
         query_user.change_user_role('Administrator')
-        for permission_name in current_app.config['ROLES_PERMISSIONS_MAP']['Administrator']:
+        for permission_name in ROLES_PERMISSIONS_MAP['Administrator']:
             self.assertTrue(query_user.check_permission(permission_name))
         self.assertEqual(len(query_user.roles), len(
-            current_app.config['ROLES_PERMISSIONS_MAP']['Administrator']))
+            ROLES_PERMISSIONS_MAP['Administrator']))
 
     def test_lock_user(self):
         user = User.create_user(username="user_one",
                                 email=fake.email(), password='123456')
         user.lock_this_user()
-        for permission_name in current_app.config['ROLES_PERMISSIONS_MAP']['User']:
+        for permission_name in ROLES_PERMISSIONS_MAP['User']:
             self.assertFalse(user.check_permission(permission_name))
 
     def test_username_and_email_unique(self):
@@ -135,3 +138,15 @@ class UserModelsTestCase(unittest.TestCase):
         db.session.commit()
         self.assertFalse(user_one.is_following(user_two))
         self.assertFalse(user_two.is_following_by(user_one))
+
+    def test_celebrity_create(self):
+        celebrity_one = Celebrity.create_one_celebrity(name=fake.name(), gender=GenderType.FEMALE, avatar_url_last='backiee-11193901e48838a82ee2f5.jpg',
+                                                       douban_id=1, imdb_id=1, born_place='China', name_en='A', aka_list=['a', 'aa', 'aaa'], aka_en_list=['b', 'bb', 'bb'])
+        self.assertIsNotNone(celebrity_one)
+        db.session.add(celebrity_one)
+        db.session.commit()
+        celebrity_one = Celebrity.query.filter_by(douban_id=1).first()
+        self.assertIsNotNone(celebrity_one)
+        celebrity_one = Celebrity.create_one_celebrity(name=fake.name(), gender=GenderType.FEMALE, avatar_url_last='backiee-11193901e48838a82ee2f5.jpg',
+                                                       douban_id=1, imdb_id=1, born_place='China', name_en='A', aka_list=['a', 'aa', 'aaa'], aka_en_list=['b', 'bb', 'bb'])
+        self.assertIsNone(celebrity_one)
