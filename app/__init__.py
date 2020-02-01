@@ -26,7 +26,7 @@ def create_app(config_name=None):
     register_extensions(app)
     # register_blueprints(app) # not work when test
     register_errorhandlers(app)
-    register_logger(app)
+    # register_logger(app)
     # t=threading.Thread(target=get_all_cinema_movie)
     # t.start()
     return app
