@@ -1,6 +1,5 @@
 import os
 import re
-import json
 from flask import current_app, g, url_for
 from flask_restful import Resource, abort, reqparse
 from werkzeug.datastructures import FileStorage
@@ -11,7 +10,7 @@ from app.helpers.utils import rename_image
 from app.models import Follow, Role, User
 from app.settings import Operations
 
-from .auth import auth, email_confirm_required, permission_required
+from .auth import auth, permission_required
 from .schemas import items_schema, user_schema, user_summary_schema
 
 

@@ -2,8 +2,7 @@ import unittest
 import time
 
 from faker import Faker
-from flask import current_app
-from sqlalchemy.exc import IntegrityError
+from flask import current_app, g
 
 from app import create_app
 from app.const import ROLES_PERMISSIONS_MAP, MovieType, MovieCinemaStatus, GenderType
@@ -60,9 +59,14 @@ class UserModelsTestCase(unittest.TestCase):
         current_user = User.verity_auth_token(token)
         self.assertIsNotNone(current_user)
         self.assertEqual(current_user.username, 'user_one')
-
+        self.assertEqual(g.current_user, current_user)
+        g.current_user.revoke_auth_token()
+        current_user = User.verity_auth_token(token)
+        self.assertIsNone(current_user)
+        self.assertIsNone(g.current_user)
         user_one = User.create_one(username="user_one_two",
                                    email=fake.email(), password='123456')
+        self.assertNotEqual(g.current_user, user_one)
         token = user_one.generate_token(expiration=2)
         time.sleep(3)
         current_user = User.verity_auth_token(token)
@@ -267,6 +271,7 @@ class UserModelsTestCase(unittest.TestCase):
         db.session.commit()
         self.assertEqual(Rating.query.count(), 0)
         self.assertEqual(user_three.ratings.count(), 0)
-        self.assertEqual(Notification.query.count(), 1)
-        self.assertEqual(user_one.notifications_received.count(), 1)
-        self.assertEqual(user_two.notifications_sent.count(), 1)
+        self.assertEqual(Notification.query.count(), 0)
+        self.assertEqual(user_one.notifications_received.count(), 0)
+        self.assertEqual(user_two.notifications_sent.count(), 0)
+        self.assertEqual(user_one.notifications_count, 0)

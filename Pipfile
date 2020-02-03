@@ -34,6 +34,11 @@ gunicorn = "*"
 flask-sqlalchemy = "*"
 pymysql = "*"
 flask-migrate = "*"
+click = "*"
+tqdm = "*"
+sentry-sdk = {extras = ["flask"],version = "==0.14.1"}
+celery = "*"
+elasticsearch = "*"
 
 [requires]
 python_version = "3.6"

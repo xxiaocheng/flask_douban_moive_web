@@ -100,10 +100,6 @@ def rename_image(old_filename):
     return new_filename
 
 
-def _upload_image_to_chevereto(url):
-    pass
-
-
 def gen_gravatar(email, size=500):
     """
     generate avatar image url for user

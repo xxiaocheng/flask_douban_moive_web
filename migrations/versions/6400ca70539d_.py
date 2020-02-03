@@ -1,16 +1,16 @@
 """empty message
 
-Revision ID: d1ef3819dc04
+Revision ID: 6400ca70539d
 Revises: 
-Create Date: 2020-01-28 20:13:26.762176
+Create Date: 2020-02-03 21:13:56.346449
 
 """
 from alembic import op
 import sqlalchemy as sa
-
+from sqlalchemy.dialects import mysql
 
 # revision identifiers, used by Alembic.
-revision = 'd1ef3819dc04'
+revision = '6400ca70539d'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -25,7 +25,7 @@ def upgrade():
     sa.Column('douban_id', sa.Integer(), nullable=True),
     sa.Column('imdb_id', sa.String(length=16), nullable=True),
     sa.Column('name', sa.String(length=128), nullable=False),
-    sa.Column('gender', sa.Integer(), nullable=False),
+    sa.Column('gender', mysql.TINYINT(display_width=1), nullable=False),
     sa.Column('avatar_url_last', sa.String(length=128), nullable=False),
     sa.Column('born_place', sa.String(length=32), nullable=True),
     sa.Column('name_en', sa.String(length=32), nullable=True),
@@ -34,6 +34,14 @@ def upgrade():
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('douban_id'),
     sa.UniqueConstraint('imdb_id')
+    )
+    op.create_table('china_area_code',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('code', sa.BIGINT(), nullable=False),
+    sa.Column('name', sa.String(length=128), nullable=False),
+    sa.Column('level', mysql.TINYINT(display_width=1), nullable=False),
+    sa.Column('pcode', sa.BIGINT(), nullable=True),
+    sa.PrimaryKeyConstraint('id')
     )
     op.create_table('countries',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
@@ -87,6 +95,42 @@ def upgrade():
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_tags_tag_name'), 'tags', ['tag_name'], unique=True)
+    op.create_table('movie_celebrities',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('movie_id', sa.Integer(), nullable=True),
+    sa.Column('celebrity_id', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['celebrity_id'], ['celebrities.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('movie_id', 'celebrity_id', name='unique_movie_id_and_celebrity_id')
+    )
+    op.create_table('movie_countries',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('movie_id', sa.Integer(), nullable=True),
+    sa.Column('country_id', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['country_id'], ['countries.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('movie_id', 'country_id', name='unique_movie_id_and_country_id')
+    )
+    op.create_table('movie_directors',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('movie_id', sa.Integer(), nullable=True),
+    sa.Column('celebrity_id', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['celebrity_id'], ['celebrities.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('movie_id', 'celebrity_id', name='unique_movie_id_and_celebrity_id')
+    )
+    op.create_table('movie_genres',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('movie_id', sa.Integer(), nullable=True),
+    sa.Column('genre_id', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['genre_id'], ['genres.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('movie_id', 'genre_id', name='unique_movie_id_and_genre_id')
+    )
     op.create_table('users',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=True),
@@ -94,10 +138,13 @@ def upgrade():
     sa.Column('username', sa.String(length=80), nullable=False),
     sa.Column('email', sa.String(length=128), nullable=False),
     sa.Column('password_hash', sa.String(length=128), nullable=False),
+    sa.Column('token_salt', sa.Integer(), nullable=False),
     sa.Column('last_login_time', sa.DateTime(), nullable=True),
     sa.Column('avatar_url_last', sa.String(length=128), nullable=True),
     sa.Column('email_confirmed', sa.Boolean(), nullable=False),
     sa.Column('signature', sa.Text(), nullable=True),
+    sa.Column('city_id', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['city_id'], ['china_area_code.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
@@ -112,56 +159,6 @@ def upgrade():
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('follower_id', 'followed_id', name='unique_follower_id_and_followed_id')
     )
-    op.create_table('movie_celebrities',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('movie_id', sa.Integer(), nullable=True),
-    sa.Column('celebrity_id', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['celebrity_id'], ['celebrities.id'], ),
-    sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('movie_id', 'celebrity_id', name='unique_movie_id_and_celebrity_id')
-    )
-    op.create_table('movie_countries',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('movie_id', sa.Integer(), nullable=True),
-    sa.Column('country_id', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['country_id'], ['countries.id'], ),
-    sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('movie_id', 'country_id', name='unique_movie_id_and_country_id')
-    )
-    op.create_table('movie_directors',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('movie_id', sa.Integer(), nullable=True),
-    sa.Column('celebrity_id', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['celebrity_id'], ['celebrities.id'], ),
-    sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('movie_id', 'celebrity_id', name='unique_movie_id_and_celebrity_id')
-    )
-    op.create_table('movie_genres',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('movie_id', sa.Integer(), nullable=True),
-    sa.Column('genre_id', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['genre_id'], ['genres.id'], ),
-    sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('movie_id', 'genre_id', name='unique_movie_id_and_genre_id')
-    )
-    op.create_table('notification',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.Column('updated_at', sa.DateTime(), nullable=True),
-    sa.Column('receiver_user_id', sa.Integer(), nullable=False),
-    sa.Column('action_user_id', sa.Integer(), nullable=False),
-    sa.Column('is_read', sa.Boolean(), nullable=True),
-    sa.Column('category', sa.Integer(), nullable=True),
-    sa.Column('information_text', sa.Text(), nullable=True),
-    sa.ForeignKeyConstraint(['action_user_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['receiver_user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('receiver_user_id', 'action_user_id', 'category', name='uniqie_receiver_user_id_and_action_user_id_and_category')
-    )
     op.create_table('ratings',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=True),
@@ -170,9 +167,9 @@ def upgrade():
     sa.Column('movie_id', sa.Integer(), nullable=False),
     sa.Column('score', sa.Integer(), nullable=True),
     sa.Column('comment', sa.Text(), nullable=True),
-    sa.Column('category', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.Column('category', mysql.TINYINT(display_width=1), nullable=True),
+    sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id', 'movie_id', 'category')
     )
@@ -185,12 +182,27 @@ def upgrade():
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id', 'role_id', name='unique_user_id_and_role_id')
     )
+    op.create_table('notification',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.Column('receiver_user_id', sa.Integer(), nullable=False),
+    sa.Column('sender_user_id', sa.Integer(), nullable=False),
+    sa.Column('is_read', sa.Boolean(), nullable=True),
+    sa.Column('category', mysql.TINYINT(display_width=1), nullable=True),
+    sa.Column('information_text', sa.Text(), nullable=True),
+    sa.Column('rating_id', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['rating_id'], ['ratings.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['receiver_user_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['sender_user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('rating_likes',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('rating_id', sa.Integer(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['rating_id'], ['ratings.id'], ),
+    sa.ForeignKeyConstraint(['rating_id'], ['ratings.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id', 'rating_id', name='unique_user_id_and_rating_id')
@@ -200,7 +212,7 @@ def upgrade():
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('rating_id', sa.Integer(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['rating_id'], ['ratings.id'], ),
+    sa.ForeignKeyConstraint(['rating_id'], ['ratings.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id', 'rating_id', name='unique_user_id_and_rating_id')
@@ -209,7 +221,7 @@ def upgrade():
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('tag_id', sa.Integer(), nullable=False),
     sa.Column('rating_id', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['rating_id'], ['ratings.id'], ),
+    sa.ForeignKeyConstraint(['rating_id'], ['ratings.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['tag_id'], ['tags.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('tag_id', 'rating_id', name='unique_tag_id_and_rating_id')
@@ -222,22 +234,23 @@ def downgrade():
     op.drop_table('rating_tags')
     op.drop_table('rating_reports')
     op.drop_table('rating_likes')
+    op.drop_table('notification')
     op.drop_table('user_roles')
     op.drop_table('ratings')
-    op.drop_table('notification')
-    op.drop_table('movie_genres')
-    op.drop_table('movie_directors')
-    op.drop_table('movie_countries')
-    op.drop_table('movie_celebrities')
     op.drop_table('followers')
     op.drop_index(op.f('ix_users_username'), table_name='users')
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
+    op.drop_table('movie_genres')
+    op.drop_table('movie_directors')
+    op.drop_table('movie_countries')
+    op.drop_table('movie_celebrities')
     op.drop_index(op.f('ix_tags_tag_name'), table_name='tags')
     op.drop_table('tags')
     op.drop_table('roles')
     op.drop_table('movies')
     op.drop_table('genres')
     op.drop_table('countries')
+    op.drop_table('china_area_code')
     op.drop_table('celebrities')
     # ### end Alembic commands ###

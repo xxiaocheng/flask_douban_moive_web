@@ -11,7 +11,10 @@
 - [pipenv](https://github.com/pypa/pipenv)
 - [Redis](https://redis.io/)
 - [MongoDB](https://www.mongodb.com/download-center)
-
+- elasticsearch
+```
+docker run -d -p 9200:9200 --name elasticsearch -p 9300:9300 -v /home/xiao/Coding/dockerV/elasticsearch:/usr/share/elasticsearch/data -e "discovery.type=single-node" docker.elastic.co/elasticsearch/elasticsearch:7.5.2
+```
 ### 安装依赖
 #### 开发环境
 ```
@@ -25,6 +28,10 @@ pipenv install
 ### 运行
 ```
 flask run 
+```
+### start celery worker
+```
+celery worker -A celery_worker.celery --loglevel=info
 ```
 
 ## 如有问题请联系 cxxlxx0@gmail.com

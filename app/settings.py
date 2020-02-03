@@ -1,5 +1,8 @@
 import os
+from dotenv import find_dotenv, load_dotenv
 
+
+load_dotenv(find_dotenv())
 
 basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 
@@ -47,42 +50,6 @@ class BaseConfig(object):
 
     EXPIRATION = 60*60*24*7  # token 过期时间为一周
 
-    # #APScheduler
-    # # SCHEDULER_API_ENABLED = True
-    # JOBS=[
-    #     #
-    #     # {导入豆瓣用户信息
-    #     #     'id': 'download_douban_user_info',
-    #     #     'func': 'app.tasks.download_tasks:get_douban_user_import_from_redis',
-    #     #     'trigger': 'interval',
-    #     #     'seconds': 60*60*24 # 一天执行一次
-    #     # },
-    #     {
-    #         'id': 'download_celebrity',
-    #         'func': 'app.tasks.download_tasks:download_celebrity_from_redis',
-    #         'trigger': 'interval',
-    #         'seconds': 60*60*24 # 一天执行一次
-    #     },
-    #     {
-    #         'id': 'download_images',
-    #         'func': 'app.tasks.download_tasks:download_image_from_redis',
-    #         'trigger': 'interval',
-    #         'seconds': 10 # 一天执行一次
-    #     },
-    #     {
-    #         'id': 'download_cinema_movie',
-    #         'func': 'app.tasks.download_tasks:get_all_cinema_movie',
-    #         'trigger': 'interval',
-    #         'seconds': 60*60*24 # 一天执行一次
-    #     },
-    #     {
-    #         'id': 'send_email_job',
-    #         'func': 'app.tasks.email_tasks:handle_email',
-    #         'trigger': 'interval',
-    #         'seconds': 10
-    #     }
-
-    # ]
     # image can upload with ext
     UPLOAD_IMAGE_EXT = ['.jpg', '.png', '.jpeg']
 
@@ -90,6 +57,16 @@ class BaseConfig(object):
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     CHEVERETO_BASE_URL = "http://119.3.163.246:8080/images/"
+
+    # CELERY SETTINGS
+    CELERY_BROKER_URL = 'redis://localhost:6379/0'
+    CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+    CELERY_TIMEZONE = 'Asia/Shanghai'
+    CELERYD_CONCURRENCY = 12
+    CELERY_IMPORTS =('app.tasks.email',)
+
+    # ELASTICSEARCH
+    ELASTICSEARCH_URL = os.environ.get('ELASTICSEARCH_URL')
 
 
 class DevelopmentConfig(BaseConfig):
@@ -103,7 +80,7 @@ class DevelopmentConfig(BaseConfig):
     }
 
     # SQLALCHEMY DATABASE SETTINGS
-    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://root:4399@127.0.0.1:3306/movies_recommend_system_dev"
+    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://root:4399@127.0.0.1:3306/movies_recommend_system_dev?charset=utf8mb4"
 
 
 class TestingConfig(BaseConfig):
