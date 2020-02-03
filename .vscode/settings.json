@@ -1,5 +1,5 @@
 {
-    "python.pythonPath": "/home/xiao/.local/share/virtualenvs/flask_douban_moive_web-pwyvLwku/bin/python",
+    "python.pythonPath": "/home/xiao/.local/share/virtualenvs/flask_douban_moive_web-t2f34oNJ/bin/python",
     "python.testing.unittestArgs": [
         "-v",
         "-s",

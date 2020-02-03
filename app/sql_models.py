@@ -1,16 +1,66 @@
 import hashlib
 from datetime import datetime
+import os
+import json
 
-from flask import current_app
+from tqdm import tqdm
+from flask import current_app, g
 from itsdangerous import BadSignature, SignatureExpired
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from sqlalchemy import or_, UniqueConstraint
 from sqlalchemy.sql import func
+from sqlalchemy.dialects.mysql import TINYINT
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.const import (ROLES_PERMISSIONS_MAP, MovieCinemaStatus, MovieType,
                        NotificationType, RatingType, GenderType)
 from app.extensions import sql_db as db
+from app.extensions import cache
+from app.es_search import add_to_index, remove_from_index, query_index
+
+
+class SearchableMixin:
+    @classmethod
+    def search(cls, expression, page, per_page):
+        ids, total = query_index(cls.__tablename__, expression, page, per_page)
+        if total == 0:
+            return cls.query.filter_by(id=-1), 0
+        when = []
+        for i in range(len(ids)):
+            when.append((ids[i], i))
+        return cls.query.filter(cls.id.in_(ids)).order_by(
+            db.case(when, value=cls.id)), total
+
+    @classmethod
+    def before_commit(cls, session):
+        if not hasattr(session, '_changes'):
+            session._changes = {
+                'add': [],
+                'update': [],
+                'delete': []
+            }
+        if session.new:
+            session._changes['add'] += [obj for obj in session.new if isinstance(obj, cls)]
+        if session.dirty:
+            session._changes['update'] += [obj for obj in session.dirty if isinstance(obj, cls)]
+        if session.deleted:
+            session._changes['delete'] += [obj for obj in session.deleted if isinstance(obj, cls)]
+
+    @classmethod
+    def after_commit(cls, session):
+        if hasattr(session, '_changes') and session._changes:
+            for obj in session._changes['add']:
+                add_to_index(cls.__tablename__, obj)
+            for obj in session._changes['update']:
+                add_to_index(cls.__tablename__, obj)
+            for obj in session._changes['delete']:
+                remove_from_index(cls.__tablename__, obj)
+            session._changes = None
+
+    @classmethod
+    def reindex(cls):
+        for obj in cls.query:
+            add_to_index(cls.__tablename__, obj)
 
 
 class MyBaseModel(db.Model):
@@ -75,45 +125,95 @@ class Notification(MyBaseModel):
     sender_user_id = db.Column(
         db.Integer, db.ForeignKey("users.id"), nullable=False)
     is_read = db.Column(db.Boolean(), default=False)
-    category = db.Column(db.Integer)  # must be in `NotificationType`
+    category = db.Column(TINYINT(1))  # must be in `NotificationType`
     information_text = db.Column(db.Text)  # not used
-    __table_args__ = (
-        UniqueConstraint('receiver_user_id', 'sender_user_id', 'category',
-                         name='uniqie_receiver_user_id_and_sender_user_id_and_category'),
-    )
+    rating_id = db.Column(db.Integer, db.ForeignKey('ratings.id', ondelete='CASCADE'), nullable=True)
 
     @staticmethod
-    def create_one(receiver_user_id, sender_user_id, category):
+    def create_one(receiver_user_id, sender_user_id, category, rating_id=None):
         """
         add action to Notification
         :param receiver_user_id: User.id
         :param sender_user_id: user send this notification
         :param category: NotificationType.FOLLOW or .RATING_ACTION
+        :param follower_id: Followers.id
+        :param rating_id: rating_id
         :return: Notification or None
         """
         if category not in [NotificationType.FOLLOW, NotificationType.RATING_ACTION]:
             return None
         notification = Notification.query.filter_by(
-            receiver_user_id=receiver_user_id, sender_user_id=sender_user_id, category=category).first()
+            receiver_user_id=receiver_user_id, sender_user_id=sender_user_id, category=category,
+            rating_id=rating_id).first()
         if not notification:
             notification = Notification(
-                receiver_user_id=receiver_user_id, sender_user_id=sender_user_id, category=category)
+                receiver_user_id=receiver_user_id, sender_user_id=sender_user_id, category=category,
+                rating_id=rating_id)
             return notification
         return None
 
 
-class User(MyBaseModel):
+class ChinaArea(db.Model):
+    __tablename__ = 'china_area_code'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    code = db.Column(db.BIGINT, nullable=False)
+    name = db.Column(db.String(128), default='', nullable=False)
+    level = db.Column(TINYINT(1), nullable=False)
+    pcode = db.Column(db.BIGINT)
+    """
+    select `a`.`code` AS `CODE`,`c`.`name` AS `province`,`b`.`name` AS `city`,`a`.`name` AS `country` from ((`china_area_code` `a` join `china_area_code` `b` on(((`a`.`level` = 3) and (`b`.`level` = 2) and (`a`.`pcode` = `b`.`code`)))) join `china_area_code` `c` on((`b`.`pcode` = `c`.`code`))) order by `a`.`code`
+    """
+
+    @staticmethod
+    def load_data_from_json():
+        with open(os.path.join(current_app.config['AREA_DATA_PATH'], 'area_code_2019.json'), 'r') as f:
+            area_data_json = json.load(f)
+        for record in tqdm(area_data_json['RECORDS']):
+            china_area = ChinaArea(code=record['code'], name=record['name'], level=record['level'],
+                                   pcode=record['pcode'])
+            db.session.add(china_area)
+        db.session.commit()
+
+    @staticmethod
+    @cache.cached(timeout=99 ^ 99, key_prefix="get_all_data_area")
+    def get_all_area_date():
+        res = list(db.session.execute('select a.id, code, name from china_area_code as a where a.level=1'))
+        parent = []
+        for p in res:
+            t = {'id': p[0], 'code': p[1], 'name': p[2]}
+            two_level_children = []
+            level_two_res = list(
+                db.session.execute('select a.id, code, name from china_area_code as a where a.pcode=' + str(p[1])))
+            for level_two in level_two_res:
+                tt = {'id': level_two[0], 'code': level_two[1], 'name': level_two[2]}
+                three_leve_children = []
+                level_three_res = list(db.session.execute(
+                    'select a.id, code, name from china_area_code as a where a.pcode=' + str(level_two[1])))
+                for level_three in level_three_res:
+                    ttt = {'id': level_three[0], 'code': level_three[1], 'name': level_three[2]}
+                    three_leve_children.append(ttt)
+                tt['children'] = three_leve_children
+                two_level_children.append(tt)
+            t['children'] = two_level_children
+            parent.append(t)
+        return parent
+
+
+class User(SearchableMixin, MyBaseModel):
     __tablename__ = 'users'
+    __searchable__ = ['username', 'signature', ]
 
     username = db.Column(db.String(80), nullable=False,
                          index=True, unique=True)
     email = db.Column(db.String(128), nullable=False, index=True, unique=True)
     password_hash = db.Column(db.String(128), nullable=False)
-    # location = db.Column(db.Integer, nullable=True)
+    token_salt = db.Column(db.Integer, default=0, nullable=False)
     last_login_time = db.Column(db.DateTime, default=datetime.utcnow)
     avatar_url_last = db.Column(db.String(128))
     email_confirmed = db.Column(db.Boolean(), default=False, nullable=False)
     signature = db.Column(db.Text)
+    city_id = db.Column(db.Integer, db.ForeignKey('china_area_code.id'))
+    city_name = db.relationship('ChinaArea', backref='users', lazy=True)
     roles = db.relationship('Role', secondary="user_roles",
                             backref=db.backref('users', lazy='dynamic'), lazy=True)
     followed = db.relationship('User', secondary='followers',
@@ -145,7 +245,7 @@ class User(MyBaseModel):
         :return: token
         """
         s = Serializer(current_app.config['SECRET_KEY'], expires_in=expiration)
-        token = s.dumps({'uid': str(self.id)}).decode('ascii')
+        token = s.dumps({'uid': str(self.id), 'token_salt': self.token_salt}).decode('ascii')
         self.last_login_time = datetime.utcnow()
         db.session.commit()
         return token
@@ -168,7 +268,17 @@ class User(MyBaseModel):
         if current_user is None:
             return None
         else:
-            return current_user
+            token_salt = data.get('token_salt')
+            if token_salt == current_user.token_salt:
+                g.current_user = current_user
+                return current_user
+            else:
+                return None
+
+    def revoke_auth_token(self):
+        self.token_salt += 1
+        g.current_user = None
+        db.session.commit()
 
     @staticmethod
     def create_one(username, email, password):
@@ -207,6 +317,7 @@ class User(MyBaseModel):
         if not new_password:
             return False
         self.password_hash = generate_password_hash(new_password)
+        self.token_salt += 1
         return True
 
     def validate_password(self, password):
@@ -222,7 +333,7 @@ class User(MyBaseModel):
         set role for user when create a user.
         :return: None
         """
-        if not Role.query.first():
+        if Role.query.count() == 0:
             Role.init_role()
         if len(self.roles) == 0:
             if self.email == current_app.config['ADMIN_EMAIL']:
@@ -361,6 +472,10 @@ class User(MyBaseModel):
         """
         return self.roles[0].role_name == "LOCKED"
 
+    @property
+    def notifications_count(self):
+        return self.notifications_received.count()
+
     def lock_this_user(self):
         """
         lock this user
@@ -408,12 +523,14 @@ class User(MyBaseModel):
             return url + self.avatar_url_last
 
 
-class Celebrity(MyBaseModel):
+class Celebrity(SearchableMixin, MyBaseModel):
     __tablename__ = 'celebrities'
+    __searchable__ = ['name', 'name_en', 'born_place']
+
     douban_id = db.Column(db.Integer, nullable=True, unique=True)
     imdb_id = db.Column(db.String(16), nullable=True, unique=True)
     name = db.Column(db.String(128), nullable=False)
-    gender = db.Column(db.Integer, default=GenderType.MALE, nullable=False)
+    gender = db.Column(TINYINT(1), default=GenderType.MALE, nullable=False)
     avatar_url_last = db.Column(db.String(128), nullable=False)
     born_place = db.Column(db.String(32))
     name_en = db.Column(db.String(32))
@@ -429,7 +546,7 @@ class Celebrity(MyBaseModel):
         else:
             celebrity = Celebrity(name=name, gender=gender, avatar_url_last=avatar_url_last, douban_id=douban_id,
                                   imdb_id=imdb_id, born_place=born_place, name_en=name_en, aka_list=' '.join(
-                                      aka_list), aka_en_list=' '.join(aka_en_list))
+                    aka_list), aka_en_list=' '.join(aka_en_list))
             return celebrity
 
     @property
@@ -519,8 +636,10 @@ movie_countries = db.Table('movie_countries',
                            UniqueConstraint('movie_id', 'country_id', name='unique_movie_id_and_country_id'))
 
 
-class Movie(MyBaseModel):
+class Movie(SearchableMixin, MyBaseModel):
     __tablename__ = 'movies'
+    __searchable__ = ['title', 'original_title', 'summary', ]
+
     douban_id = db.Column(db.Integer, unique=True, nullable=True)
     imdb_id = db.Column(db.String(16), unique=True, nullable=True)
     title = db.Column(db.String(64), nullable=False)
@@ -556,7 +675,8 @@ class Movie(MyBaseModel):
         if Movie.query.filter(or_(Movie.douban_id == douban_id, Movie.imdb_id == imdb_id)).first():
             return None
         else:
-            movie = Movie(title=title, subtype=subtype, image_url_last=image_url_last, summary=summary, douban_id=douban_id,
+            movie = Movie(title=title, subtype=subtype, image_url_last=image_url_last, summary=summary,
+                          douban_id=douban_id,
                           imdb_id=imdb_id, original_title=original_title, year=year,
                           seasons_count=seasons_count, episodes_count=episodes_count, current_season=current_season,
                           cinema_status=cinema_status, aka_list=' '.join(aka_list))
@@ -659,7 +779,7 @@ class Rating(MyBaseModel):
         'movies.id', ondelete='CASCADE'), nullable=False)
     score = db.Column(db.Integer, default=0)
     comment = db.Column(db.Text, default='')
-    category = db.Column(db.Integer, default=2)  # 0=wish, 1=do, 2=collect
+    category = db.Column(TINYINT(1), default=2)  # 0=wish, 1=do, 2=collect
     tags = db.relationship('Tag', secondary='rating_tags', backref=db.backref(
         'ratings', lazy='dynamic'), lazy=True)
     like_by_users = db.relationship('User', secondary='rating_likes',
@@ -698,7 +818,7 @@ class Rating(MyBaseModel):
             return False
         self.like_by_users.append(user)
         notification = Notification.create_one(
-            self.user_id, user.id, NotificationType.RATING_ACTION)
+            self.user_id, user.id, NotificationType.RATING_ACTION, rating_id=self.id)
         if notification:
             self.user.notifications_received.append(notification)
             user.notifications_sent.append(notification)
@@ -728,3 +848,13 @@ class Rating(MyBaseModel):
             return False
         self.report_by_users.append(user)
         return True
+
+
+db.event.listen(db.session, 'before_commit', User.before_commit)
+db.event.listen(db.session, 'after_commit', User.after_commit)
+
+db.event.listen(db.session, 'before_commit', Movie.before_commit)
+db.event.listen(db.session, 'after_commit', Movie.after_commit)
+
+db.event.listen(db.session, 'before_commit', Celebrity.before_commit)
+db.event.listen(db.session, 'after_commit', Celebrity.after_commit)

@@ -1,20 +1,19 @@
-import json
 import threading
 
-from app.email import (send_change_email_email, send_confirm_email,
-                       send_reset_password_email)
-from app.extensions import redis_store,scheduler
+from app.tasks.email import (send_change_email_email, send_confirm_email,
+                             send_reset_password_email)
+from app.extensions import redis_store
 from app.helpers.utils import generate_email_confirm_token
 from app.settings import Operations
 
 key = 'task:email'
 
-def _send_async_email(task):
 
-    task_str=str(task[1],encoding='utf-8')
+def _send_async_email(task):
+    task_str = str(task[1], encoding='utf-8')
     task_dict = eval(task_str)
-    to, cate, username,timestamp = task_dict.values()
-    app=redis_store.app
+    to, cate, username, timestamp = task_dict.values()
+    app = redis_store.app
     with app.app_context():
         if cate == Operations.CHANGE_EMAIL:
             token = generate_email_confirm_token(
@@ -37,6 +36,5 @@ def _send_async_email(task):
 def handle_email():
     if redis_store.llen(key):
         task = redis_store.blpop(key)
-        t=threading.Thread(target=_send_async_email,args=(task,))
+        t = threading.Thread(target=_send_async_email, args=(task,))
         t.start()
-    
