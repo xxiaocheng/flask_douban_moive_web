@@ -8,12 +8,12 @@ from flask_apscheduler import APScheduler
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 
-db=MongoEngine()
-cache=Cache()
-avatars=Avatars()
-cors=CORS()
-api=Api()
-redis_store=FlaskRedis()
-scheduler=APScheduler()
+db = MongoEngine()
+cache = Cache()
+avatars = Avatars()
+cors = CORS()
+api = Api()
+redis_store = FlaskRedis()
+scheduler = APScheduler()
 sql_db = SQLAlchemy()
 migrate = Migrate()

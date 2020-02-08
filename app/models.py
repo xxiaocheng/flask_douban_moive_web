@@ -6,7 +6,11 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from mongoengine.errors import NotUniqueError
 from app.extensions import db
 from app.helpers.redis_utils import add_movie_to_rank_redis
-from itsdangerous import TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired
+from itsdangerous import (
+    TimedJSONWebSignatureSerializer as Serializer,
+    BadSignature,
+    SignatureExpired,
+)
 
 
 class Role(db.Document):
@@ -15,26 +19,50 @@ class Role(db.Document):
 
     def __repr__(self):
         super().__repr__()
-        return '<%s: Role object>' % self.name
+        return "<%s: Role object>" % self.name
 
     @staticmethod
     def init_role():
         roles_permissions_map = {
-            'Locked':[],
-            'User': ['FOLLOW', 'COLLECT', 'COMMENT'],
-            'Moderator': ['FOLLOW', 'COLLECT', 'COMMENT', 'UPLOAD', 
-                            'MODERATE','SET_ROLE','HANDLE_REPORT','DELETE_CELEBRITY','DELETE_MOVIE','DELETE_MOVIE'],
-            'Administrator': ['FOLLOW', 'COLLECT', 'COMMENT', 'UPLOAD',
-                             'MODERATE', 'ADMINISTER','LOCK','SET_ROLE','HANDLE_REPORT','DELETE_CELEBRITY','DELETE_MOVIE','DELETE_MOVIE']
+            "Locked": [],
+            "User": ["FOLLOW", "COLLECT", "COMMENT"],
+            "Moderator": [
+                "FOLLOW",
+                "COLLECT",
+                "COMMENT",
+                "UPLOAD",
+                "MODERATE",
+                "SET_ROLE",
+                "HANDLE_REPORT",
+                "DELETE_CELEBRITY",
+                "DELETE_MOVIE",
+                "DELETE_MOVIE",
+            ],
+            "Administrator": [
+                "FOLLOW",
+                "COLLECT",
+                "COMMENT",
+                "UPLOAD",
+                "MODERATE",
+                "ADMINISTER",
+                "LOCK",
+                "SET_ROLE",
+                "HANDLE_REPORT",
+                "DELETE_CELEBRITY",
+                "DELETE_MOVIE",
+                "DELETE_MOVIE",
+            ],
         }
 
         for role_name in roles_permissions_map:
             if len(Role.objects(name=role_name)) == 0:
-                role = Role(name=role_name,
-                            permissions=roles_permissions_map[role_name])
+                role = Role(
+                    name=role_name, permissions=roles_permissions_map[role_name]
+                )
                 role.save()
             Role.objects(name=role_name).update(
-                permissions=roles_permissions_map[role_name])
+                permissions=roles_permissions_map[role_name]
+            )
 
 
 class Tag(db.Document):
@@ -64,21 +92,21 @@ class User(db.Document):
     notification_count = db.IntField(default=0)
     role = db.ReferenceField(Role)
     signature = db.StringField()  # 个性签名
-    douban_imported=db.BooleanField(default=False)
+    douban_imported = db.BooleanField(default=False)
 
-    meta={
-        'indexes':[
+    meta = {
+        "indexes": [
             {
-                'fields':['$username','$signature'],
-                'default_language':'english',
-                'weights':{'username':10,'signature':3}
+                "fields": ["$username", "$signature"],
+                "default_language": "english",
+                "weights": {"username": 10, "signature": 3},
             }
         ]
     }
 
     def __repr__(self):
         super().__repr__()
-        return '<%s: User object>' % self.username
+        return "<%s: User object>" % self.username
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -89,8 +117,10 @@ class User(db.Document):
     def generate_token(self, expiration=3600):
         """根据用户id生成带有过期时间的token,默认过期时间为3600秒
         """
-        s = Serializer(current_app.config['SECRET_KEY'], expires_in=expiration)
-        token = s.dumps({'uid': str(self.id),'password':str(self.password_hash)}).decode('ascii')
+        s = Serializer(current_app.config["SECRET_KEY"], expires_in=expiration)
+        token = s.dumps(
+            {"uid": str(self.id), "password": str(self.password_hash)}
+        ).decode("ascii")
         self.last_login_time = datetime.now()
         self.save()
         return token
@@ -99,20 +129,19 @@ class User(db.Document):
     def verify_auth_token(token):
         """验证认证token是否正确 ,返回 ``User``
         """
-        s = Serializer(current_app.config['SECRET_KEY'])
+        s = Serializer(current_app.config["SECRET_KEY"])
         try:
             data = s.loads(token)
         except SignatureExpired:
             return None  # valid token, but expired
         except BadSignature:
             return None  # invalid token
-        user = User.objects(
-            id=data['uid'], is_deleted=False).first()
+        user = User.objects(id=data["uid"], is_deleted=False).first()
         if user is None:
             return None
-        password=data.get('password')
+        password = data.get("password")
         if password:
-            if user.password_hash==password:
+            if user.password_hash == password:
                 g.current_user = user
                 return user
             else:
@@ -124,7 +153,10 @@ class User(db.Document):
     def create_user(username, email, password):
         """ 根据用户名,邮箱,密码创建新用户,返回创建结果 ``None`` or ``User``
         """
-        if  User.objects(username=username, is_deleted=False).first() or User.objects(email=email, is_deleted=False).first():
+        if (
+            User.objects(username=username, is_deleted=False).first()
+            or User.objects(email=email, is_deleted=False).first()
+        ):
             return None
         try:
             user = User(username=username, email=email)
@@ -139,10 +171,10 @@ class User(db.Document):
         if not Role.objects().first():
             Role.init_role()
         if self.role == None:
-            if self.email == current_app.config['ADMIN_EMAIL']:
-                self.role = Role.objects(name='Administrator').first()
+            if self.email == current_app.config["ADMIN_EMAIL"]:
+                self.role = Role.objects(name="Administrator").first()
             else:
-                self.role = Role.objects(name='User').first()
+                self.role = Role.objects(name="User").first()
 
     def set_password(self, password):
         self.update(password_hash=generate_password_hash(password))
@@ -170,7 +202,8 @@ class User(db.Document):
         if self.username != user.username:
             if user.is_follow_by(self):
                 follow_ob = Follow.objects(
-                    followed=user, follower=self,is_deleted=False).first()
+                    followed=user, follower=self, is_deleted=False
+                ).first()
                 follow_ob.update(is_deleted=True)
                 Notification.objects(follow_info=follow_ob).delete()
                 self.update(dec__followings_count=1)
@@ -182,10 +215,10 @@ class User(db.Document):
 
     def _update_rating(self, movie):
         # 在用户对电影进行评价后或者更改评价后 更新电影评分,0 分计入评分
-        score_sum = Rating.objects(movie=movie,is_deleted=False).sum('score')
+        score_sum = Rating.objects(movie=movie, is_deleted=False).sum("score")
 
         if movie.rating_count > 0:
-            new_score = score_sum/movie.rating_count
+            new_score = score_sum / movie.rating_count
             movie.update(set__score=new_score)
         if movie.rating_count == 0:
             movie.update(set__score=0)
@@ -194,7 +227,7 @@ class User(db.Document):
         # 将以空格分割的标签 转换为标签对象
         tag_obj_list = []
         if tags:
-            tag_list = tags.split(' ')
+            tag_list = tags.split(" ")
             for tag in tag_list:
                 try:
                     tag_obj_list.append(Tag(name=tag).save())
@@ -202,14 +235,15 @@ class User(db.Document):
                     tag_obj_list.append(Tag.objects(name=tag).first())
         return tag_obj_list
 
-    def _rating_on_movie(self, movie, category, score=0, comment=None, tags=''):
+    def _rating_on_movie(self, movie, category, score=0, comment=None, tags=""):
         assert score in [x for x in range(0, 11)]
         assert category in [0, 1, 2]
         # 好恶心的代码,自己也不想看,反正测试通过了...
         tags = self._parse_tags_to_tag_list(tags)
         if not movie.is_deleted:
             last_rating = Rating.objects(
-                user=self, movie=movie, is_deleted=False).first()
+                user=self, movie=movie, is_deleted=False
+            ).first()
             if last_rating:
                 last_category = last_rating.category
                 last_score = last_rating.score
@@ -218,12 +252,22 @@ class User(db.Document):
                     movie.reload()
                 if score > 0:
                     last_rating.update(
-                        category=category, score=score, comment=comment, tags=tags, rating_time=datetime.now())
+                        category=category,
+                        score=score,
+                        comment=comment,
+                        tags=tags,
+                        rating_time=datetime.now(),
+                    )
                     movie.update(inc__rating_count=1)
                     movie.reload()
                 else:
                     last_rating.update(
-                        category=category, score=score, comment=comment, tags=tags, rating_time=datetime.now())
+                        category=category,
+                        score=score,
+                        comment=comment,
+                        tags=tags,
+                        rating_time=datetime.now(),
+                    )
                     movie.reload()
                 if last_category != category:
                     if last_category == 0:
@@ -248,12 +292,23 @@ class User(db.Document):
                 last_rating.reload()
             else:
                 if score:
-                    rating = Rating(user=self, movie=movie, category=category,
-                                    score=score, comment=comment, tags=tags)
+                    rating = Rating(
+                        user=self,
+                        movie=movie,
+                        category=category,
+                        score=score,
+                        comment=comment,
+                        tags=tags,
+                    )
                     movie.update(inc__rating_count=1)
                 else:
-                    rating = Rating(user=self, movie=movie,
-                                    category=category, comment=comment, tags=tags)
+                    rating = Rating(
+                        user=self,
+                        movie=movie,
+                        category=category,
+                        comment=comment,
+                        tags=tags,
+                    )
                 rating.save()
                 if category == 0:
                     self.update(inc__wish_count=1)
@@ -270,19 +325,22 @@ class User(db.Document):
             movie.reload()
 
     def wish_movie(self, movie, score=0, comment=None, tags=None):
-        self._rating_on_movie(movie, category=0, score=score,
-                              comment=comment, tags=tags)
+        self._rating_on_movie(
+            movie, category=0, score=score, comment=comment, tags=tags
+        )
 
     def do_movie(self, movie, score=0, comment=None, tags=None):
-        self._rating_on_movie(movie, category=1, score=score,
-                              comment=comment, tags=tags)
+        self._rating_on_movie(
+            movie, category=1, score=score, comment=comment, tags=tags
+        )
 
     def collect_movie(self, movie, score=0, comment=None, tags=None):
-        self._rating_on_movie(movie, category=2, score=score,
-                              comment=comment, tags=tags)
+        self._rating_on_movie(
+            movie, category=2, score=score, comment=comment, tags=tags
+        )
 
     def is_locked(self):
-        return self.role.name=='Locked'
+        return self.role.name == "Locked"
 
     def interest_on_movie(self, movie):
         pass
@@ -296,7 +354,7 @@ class User(db.Document):
             return False
 
     def is_follow_by(self, user):
-        """判断 `self` 是否被 `user` 关注 
+        """判断 `self` 是否被 `user` 关注
         """
         if Follow.objects(followed=self, follower=user, is_deleted=False).first():
             return True
@@ -315,11 +373,10 @@ class User(db.Document):
             self.avatar_s = filenames[0]
             self.avatar_m = filenames[1]
             self.avatar_l = filenames[2]
-            self.avatar_raw=filenames[2]   # ?
+            self.avatar_raw = filenames[2]  # ?
 
     def delete_rating(self, movie):
-        rating = Rating.objects(user=self, movie=movie,
-                                is_deleted=False).first()
+        rating = Rating.objects(user=self, movie=movie, is_deleted=False).first()
         if rating:
             category = rating.category
             score = rating.score
@@ -345,32 +402,28 @@ class User(db.Document):
         if like:
             return True
         return False
-    
+
     def delete_self(self):
 
         # 删除账户时执行的操作
-        followings=Follow.objects(follower=self,is_deleted=False)
-        followers=Follow.objects(followed=self,is_deleted=False)
+        followings = Follow.objects(follower=self, is_deleted=False)
+        followers = Follow.objects(followed=self, is_deleted=False)
         for follow in followings:
             self.unfollow(follow.followed)
 
         for follow in followers:
             follow.follower.unfollow(self)
 
-        ratings=Rating.objects(user=self,is_deleted=False)
+        ratings = Rating.objects(user=self, is_deleted=False)
         for rating in ratings:
             rating.delete_self()
 
         # 取消对评论的点赞
-        likes=Like.objects(user=self)
+        likes = Like.objects(user=self)
         for like in likes:
             like.rating.unlike_by(self)
-        
+
         self.update(is_deleted=True)
-        
-        
-
-
 
 
 class Celebrity(db.Document):
@@ -378,7 +431,7 @@ class Celebrity(db.Document):
     imdb_id = db.StringField()
     name = db.StringField(required=True)
     gender = db.StringField()
-    avatar = db.StringField(deault='default.png')
+    avatar = db.StringField(deault="default.png")
     created_time = db.DateTimeField(default=datetime.now)
     born_place = db.StringField()
     aka_en = db.ListField()
@@ -386,12 +439,12 @@ class Celebrity(db.Document):
     aka = db.ListField()
     is_deleted = db.BooleanField(default=False)
 
-    meta={
-        'indexes':[
+    meta = {
+        "indexes": [
             {
-                'fields':['$name'],
-                'default_language':'english',
-                'weights':{'name':10}
+                "fields": ["$name"],
+                "default_language": "english",
+                "weights": {"name": 10},
             }
         ]
     }
@@ -415,12 +468,12 @@ class Movie(db.Document):
     do_by_count = db.IntField(default=0)
     collect_by_count = db.IntField(default=0)
     year = db.IntField()
-    image = db.StringField(deault='deault.png')
-    seasons_count = db.IntField() #总季数
-    episodes_count = db.IntField()  #多少集
+    image = db.StringField(deault="deault.png")
+    seasons_count = db.IntField()  # 总季数
+    episodes_count = db.IntField()  # 多少集
     countries = db.ListField()
     genres = db.ListField(db.ReferenceField(Tag))  # 标签
-    current_season = db.IntField()  #当前第几季
+    current_season = db.IntField()  # 当前第几季
     original_title = db.StringField()
     summary = db.StringField()
     aka = db.ListField()
@@ -431,20 +484,19 @@ class Movie(db.Document):
     is_deleted = db.BooleanField(default=False)
     created_time = db.DateTimeField(default=datetime.now)
 
-    meta={
-        'indexes':[
+    meta = {
+        "indexes": [
             {
-                'fields':['$title','$summary'],
-                'default_language':'english',
-                'weights':{'title':10,'summary':3}
+                "fields": ["$title", "$summary"],
+                "default_language": "english",
+                "weights": {"title": 10, "summary": 3},
             }
         ]
     }
-    
 
     def __repr__(self):
         super().__repr__()
-        return '<%s: Movie object>' % self.title
+        return "<%s: Movie object>" % self.title
 
     def delete_self(self):
         ratings = Rating.objects(movie=self, is_deleted=False)
@@ -464,14 +516,37 @@ class Follow(db.Document):
     #     super().__repr__()
     #     return '<%s following %s: Follow object>' % self.follower, self.followed
 
-    def save(self, force_insert=False, validate=True, clean=True, write_concern=None, cascade=None, cascade_kwargs=None, _refs=None, save_condition=None, signal_kwargs=None, **kwargs):
-        super().save(force_insert=force_insert, validate=validate, clean=clean, write_concern=write_concern, cascade=cascade,
-                     cascade_kwargs=cascade_kwargs, _refs=_refs, save_condition=save_condition, signal_kwargs=signal_kwargs, **kwargs)
+    def save(
+        self,
+        force_insert=False,
+        validate=True,
+        clean=True,
+        write_concern=None,
+        cascade=None,
+        cascade_kwargs=None,
+        _refs=None,
+        save_condition=None,
+        signal_kwargs=None,
+        **kwargs
+    ):
+        super().save(
+            force_insert=force_insert,
+            validate=validate,
+            clean=clean,
+            write_concern=write_concern,
+            cascade=cascade,
+            cascade_kwargs=cascade_kwargs,
+            _refs=_refs,
+            save_condition=save_condition,
+            signal_kwargs=signal_kwargs,
+            **kwargs
+        )
         self.add_to_notification()
 
     def add_to_notification(self):
         follow_notification = Notification(
-            receiver=self.followed, category=0, follow_info=self)
+            receiver=self.followed, category=0, follow_info=self
+        )
         follow_notification.save()
 
 
@@ -502,7 +577,7 @@ class Rating(db.Document):
             self.update(dec__like_count=1)
 
     def report_by(self, user):
-        if not Report.objects(user=user, rating=self)  :
+        if not Report.objects(user=user, rating=self):
             report = Report(user=user, rating=self)
             report.save()
             self.update(inc__report_count=1)
@@ -527,7 +602,7 @@ class Rating(db.Document):
         if category == 2:
             user.update(dec__collect_count=1)
             movie.update(dec__collect_by_count=1)
-            add_movie_to_rank_redis(movie,dec=True)
+            add_movie_to_rank_redis(movie, dec=True)
         user.reload()
         movie.reload()
         user._update_rating(movie)
@@ -538,14 +613,37 @@ class Like(db.Document):
     rating = db.ReferenceField(Rating)
     created_time = db.DateTimeField(default=datetime.now)
 
-    def save(self, force_insert=False, validate=True, clean=True, write_concern=None, cascade=None, cascade_kwargs=None, _refs=None, save_condition=None, signal_kwargs=None, **kwargs):
-        super().save(force_insert=force_insert, validate=validate, clean=clean, write_concern=write_concern, cascade=cascade,
-                     cascade_kwargs=cascade_kwargs, _refs=_refs, save_condition=save_condition, signal_kwargs=signal_kwargs, **kwargs)
+    def save(
+        self,
+        force_insert=False,
+        validate=True,
+        clean=True,
+        write_concern=None,
+        cascade=None,
+        cascade_kwargs=None,
+        _refs=None,
+        save_condition=None,
+        signal_kwargs=None,
+        **kwargs
+    ):
+        super().save(
+            force_insert=force_insert,
+            validate=validate,
+            clean=clean,
+            write_concern=write_concern,
+            cascade=cascade,
+            cascade_kwargs=cascade_kwargs,
+            _refs=_refs,
+            save_condition=save_condition,
+            signal_kwargs=signal_kwargs,
+            **kwargs
+        )
         self._add_to_notification()
 
     def _add_to_notification(self):
         like_notificatrion = Notification(
-            receiver=self.rating.user, category=1, like_info=self)
+            receiver=self.rating.user, category=1, like_info=self
+        )
         like_notificatrion.save()
 
 
@@ -566,5 +664,5 @@ class Notification(db.Document):
 
 
 class Cinema(db.Document):
-    cate=db.IntField(required=True)   #0->showing 1->coming
-    movie=db.ReferenceField(Movie)
+    cate = db.IntField(required=True)  # 0->showing 1->coming
+    movie = db.ReferenceField(Movie)

@@ -49,4 +49,3 @@ services:
     volumes:
       - "./data/mongodb:/data/db"
     command: mongod --smallfiles --logpath=/dev/null
-
