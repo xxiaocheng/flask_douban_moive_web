@@ -25,7 +25,6 @@ flask-restful = "*"
 flask-httpauth = "*"
 requests = "*"
 flask-redis = "*"
-flask-apscheduler = "*"
 fake-useragent = "*"
 sendgrid = "==5.6.0"
 pillow = "*"
@@ -39,6 +38,8 @@ tqdm = "*"
 sentry-sdk = {extras = ["flask"],version = "==0.14.1"}
 celery = "*"
 elasticsearch = "*"
+hashids = "*"
+pre-commit = "*"
 
 [requires]
 python_version = "3.6"

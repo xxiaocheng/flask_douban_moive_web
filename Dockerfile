@@ -11,4 +11,3 @@ RUN apt-get update && apt-get install -y python3-pip && \
 # EXPOSE 5000
 
 # CMD flask run --host=0.0.0.0
-

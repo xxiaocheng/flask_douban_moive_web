@@ -22,12 +22,12 @@ pipenv install --dev
 ```
 #### 生产环境
 ```
-pipenv install 
+pipenv install
 ```
 
 ### 运行
 ```
-flask run 
+flask run
 ```
 ### start celery worker
 ```
