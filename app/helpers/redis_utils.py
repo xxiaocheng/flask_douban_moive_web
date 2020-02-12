@@ -1,15 +1,15 @@
 from app.extensions import redis_store
 import json
 from time import time
-from app.settings import Operations
+from app.settings import AccountOperations
 import datetime
 
 
 def email_task(user, cate):
     assert cate in [
-        Operations.CHANGE_EMAIL,
-        Operations.CONFIRM,
-        Operations.RESET_PASSWORD,
+        AccountOperations.CHANGE_EMAIL,
+        AccountOperations.CONFIRM,
+        AccountOperations.RESET_PASSWORD,
     ]
     return {"to": user.email, "cate": cate, "username": user.username, "time": time()}
 
@@ -101,11 +101,11 @@ def send_email_limit(user, cate):
     发送邮件前检测用户是否发送频繁
     @return :-2  发送成功 ,>0 限制 多少秒后才可发送 , 默认限制5分钟发送一次
     """
-    if cate == Operations.CONFIRM:
+    if cate == AccountOperations.CONFIRM:
         key = "confirmEmail:limit:" + user.email
-    elif cate == Operations.RESET_PASSWORD:
+    elif cate == AccountOperations.RESET_PASSWORD:
         key = "resetPasswordEmail:limit:" + user.email
-    elif cate == Operations.CHANGE_EMAIL:
+    elif cate == AccountOperations.CHANGE_EMAIL:
         key = "changeEmail:limit:" + user.email
 
     ttl_time = redis_store.ttl(key)

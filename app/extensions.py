@@ -4,7 +4,6 @@ from flask_avatars import Avatars
 from flask_cors import CORS
 from flask_restful import Api
 from flask_redis import FlaskRedis
-from flask_apscheduler import APScheduler
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 
@@ -14,6 +13,5 @@ avatars = Avatars()
 cors = CORS()
 api = Api()
 redis_store = FlaskRedis()
-scheduler = APScheduler()
 sql_db = SQLAlchemy()
 migrate = Migrate()

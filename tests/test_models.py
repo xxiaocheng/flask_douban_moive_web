@@ -112,7 +112,7 @@ class UserModelsTestCase(unittest.TestCase):
         db.session.commit()
 
         query_user = User.query.filter_by(username="user_one").first()
-        query_user.change_user_role("Administrator")
+        query_user.change_role("Administrator")
         for permission_name in ROLES_PERMISSIONS_MAP["Administrator"]:
             self.assertTrue(query_user.check_permission(permission_name))
         self.assertEqual(
@@ -371,6 +371,11 @@ class UserModelsTestCase(unittest.TestCase):
         self.assertEqual(user_three.report_ratings.count(), 1)
         self.assertEqual(user_one.notifications_received.count(), 1)
         self.assertEqual(user_two.notifications_sent.count(), 1)
+        user_one.delete_rating_on(movie_one)
+        user_two.delete_rating_on(movie_one)
+        user_three.delete_rating_on(movie_one)
+        db.session.commit()
+        self.assertEqual(Rating.query.count(), 0)
         Movie.query.delete()
         db.session.commit()
         self.assertEqual(Rating.query.count(), 0)

@@ -1,4 +1,4 @@
-class Operations:
+class AccountOperations:
     CONFIRM = "confirm-email"
     RESET_PASSWORD = "reset-password"
     CHANGE_EMAIL = "change-email"

@@ -13,9 +13,8 @@ from celery import Celery
 from elasticsearch import Elasticsearch
 
 from app.extensions import avatars, cache, cors, db, api, redis_store, sql_db, migrate
-from app.sql_models import ChinaArea, User
-from app.v1 import api_bp
 from app.settings import config, BaseConfig
+from app.sql_models import ChinaArea
 
 # migrate the databases
 from app.sql_models import User
@@ -45,7 +44,7 @@ def create_app(config_name=None):
     app.config.from_object(config[config_name])
 
     register_extensions(app)
-    # register_blueprints(app) # not work when test
+    register_blueprints(app)  # not work when test
     register_error_handlers(app)
     register_commands(app)
     register_logger(app)
@@ -67,15 +66,16 @@ def register_extensions(app):
     redis_store.init_app(app)
     sql_db.init_app(app)
     migrate.init_app(app, db=sql_db)
-
-    api.init_app(api_bp)  # flask_restful 文档关于蓝本的用法
+    # api.init_app(api_bp)  # flask_restful 文档关于蓝本的用法
 
 
 def register_blueprints(app):
     """Register the blueprints to the app.
     :param app: the instance of ``Flask``
     """
-    app.register_blueprint(api_bp, url_prefix="/api/v1")
+    from app.v2 import api_bp
+
+    app.register_blueprint(api_bp)
 
 
 def register_error_handlers(app):

@@ -23,6 +23,7 @@ from app.const import (
 from app.extensions import sql_db as db
 from app.extensions import cache
 from app.es_search import add_to_index, remove_from_index, query_index
+from app.utils.redis_utils import add_rating_to_rank_redis
 
 
 class SearchableMixin:
@@ -47,7 +48,7 @@ class SearchableMixin:
 
     @classmethod
     def before_commit(cls, session):
-        if not hasattr(session, "_changes"):
+        if not hasattr(session, "_changes") or session._changes is None:
             session._changes = {"add": [], "update": [], "delete": []}
         if session.new:
             session._changes["add"] += [
@@ -94,8 +95,8 @@ class MyBaseModel(db.Model):
 user_roles = db.Table(
     "user_roles",
     db.Column("id", db.Integer, primary_key=True, autoincrement=True),
-    db.Column("user_id", db.Integer, db.ForeignKey("users.id")),
-    db.Column("role_id", db.Integer, db.ForeignKey("roles.id")),
+    db.Column("user_id", db.Integer, db.ForeignKey("users.id", ondelete="CASCADE")),
+    db.Column("role_id", db.Integer, db.ForeignKey("roles.id", ondelete="CASCADE")),
     UniqueConstraint("user_id", "role_id", name="unique_user_id_and_role_id"),
 )
 
@@ -130,7 +131,7 @@ followers = db.Table(
     "followers",
     db.Column("id", db.Integer, primary_key=True, autoincrement=True),
     db.Column("follower_id", db.Integer, db.ForeignKey("users.id")),
-    db.Column("followed_id", db.Integer, db.ForeignKey("roles.id")),
+    db.Column("followed_id", db.Integer, db.ForeignKey("users.id")),
     db.Column("created_at", db.DateTime, default=datetime.utcnow()),
     UniqueConstraint(
         "follower_id", "followed_id", name="unique_follower_id_and_followed_id"
@@ -263,7 +264,7 @@ class User(SearchableMixin, MyBaseModel):
     email_confirmed = db.Column(db.Boolean(), default=False, nullable=False)
     signature = db.Column(db.Text)
     city_id = db.Column(db.Integer, db.ForeignKey("china_area_code.id"))
-    city_name = db.relationship("ChinaArea", backref="users", lazy=True)
+    city = db.relationship("ChinaArea", backref="users", lazy=True)
     roles = db.relationship(
         "Role",
         secondary="user_roles",
@@ -377,6 +378,13 @@ class User(SearchableMixin, MyBaseModel):
         if User.query.filter_by(email=new_email).first():
             return False
         self.email = new_email
+        self.email_confirmed = False
+        return True
+
+    def change_username(self, new_username):
+        if User.query.filter_by(username=new_username).first():
+            return False
+        self.username = new_username
         return True
 
     def change_password(self, new_password):
@@ -413,7 +421,7 @@ class User(SearchableMixin, MyBaseModel):
                 current_roles = Role.query.filter_by(role_name="User")
             self.roles += current_roles
 
-    def change_user_role(self, role_name):
+    def change_role(self, role_name):
         """
         change user`s role
         :param role_name: ROLES_PERMISSIONS_MAP.keys()
@@ -421,7 +429,7 @@ class User(SearchableMixin, MyBaseModel):
         self.roles.clear()
         if Role.query.count() == 0:
             Role.init_role()
-        current_roles = Role.query.filter_by(role_name=role_name)
+        current_roles = Role.query.filter_by(role_name=role_name.title())
         self.roles += current_roles
 
     def follow(self, user):
@@ -468,6 +476,8 @@ class User(SearchableMixin, MyBaseModel):
         :param user: User
         :return: True or False
         """
+        if self == user:
+            return True
         return self.followed.filter(followers.c.followed_id == user.id).count() > 0
 
     def is_followed_by(self, user):
@@ -476,6 +486,8 @@ class User(SearchableMixin, MyBaseModel):
         :param user: User
         :return: True or False
         """
+        if self == user:
+            return True
         return user.is_following(self)
 
     def wish_movie(self, movie, comment=None, tags_name=[]):
@@ -493,6 +505,7 @@ class User(SearchableMixin, MyBaseModel):
         )
         r.movie_id = movie.id
         self.ratings.append(r)
+        add_rating_to_rank_redis(movie)
         return r
 
     def do_movie(self, movie, score=0, comment=None, tags_name=[]):
@@ -513,6 +526,7 @@ class User(SearchableMixin, MyBaseModel):
         )
         r.movie_id = movie.id
         self.ratings.append(r)
+        add_rating_to_rank_redis(movie)
         return r
 
     def collect_movie(self, movie, score=0, comment=None, tags_name=[]):
@@ -534,6 +548,7 @@ class User(SearchableMixin, MyBaseModel):
         )
         r.movie_id = movie.id
         self.ratings.append(r)
+        add_rating_to_rank_redis(movie)
         return r
 
     def delete_rating_on(self, movie):
@@ -542,8 +557,18 @@ class User(SearchableMixin, MyBaseModel):
         :param movie:
         :return:
         """
-        pass
-        # todo
+        rating = Rating.query.filter_by(movie_id=movie.id, user_id=self.id).first()
+        if not rating:
+            return False
+        self.ratings.remove(rating)
+        add_rating_to_rank_redis(movie, True)
+        return True
+
+    @property
+    def role_name(self):
+        if not self.roles:
+            return
+        return self.roles[0].role_name
 
     @property
     def is_locked(self):
@@ -551,7 +576,7 @@ class User(SearchableMixin, MyBaseModel):
         test this user is locked or not
         :return: True or False
         """
-        return self.roles[0].role_name == "LOCKED"
+        return self.role_name == "LOCKED"
 
     @property
     def notifications_count(self):
@@ -561,7 +586,7 @@ class User(SearchableMixin, MyBaseModel):
         """
         lock this user
         """
-        self.change_user_role("Locked")
+        self.change_role("Locked")
 
     def check_permission(self, permission):
         """Check Permission"""
@@ -602,6 +627,14 @@ class User(SearchableMixin, MyBaseModel):
         else:
             url = current_app.config["CHEVERETO_BASE_URL"]
             return url + self.avatar_url_last
+
+    @property
+    def followers_count(self):
+        return self.followers.count()
+
+    @property
+    def followings_count(self):
+        return self.followed.count()
 
 
 class Celebrity(SearchableMixin, MyBaseModel):

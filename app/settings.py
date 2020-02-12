@@ -7,7 +7,7 @@ load_dotenv(find_dotenv())
 basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 
 
-class Operations:
+class AccountOperations:
     CONFIRM = "confirm-email"
     RESET_PASSWORD = "reset-password"
     CHANGE_EMAIL = "change-email"
@@ -71,6 +71,9 @@ class BaseConfig(object):
 
     # hashids
     HASHIDS_SALT = os.getenv("HASHIDS_SALT", "this is my salt")
+
+    # flask-restful
+    BUNDLE_ERRORS = True
 
 
 class DevelopmentConfig(BaseConfig):

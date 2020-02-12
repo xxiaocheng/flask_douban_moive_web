@@ -9,7 +9,7 @@ from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 
 from app.helpers.redis_utils import add_email_task_to_redis, email_task
 from app.models import User
-from app.settings import Operations
+from app.settings import AccountOperations
 
 
 def download_image_from_url(image_url):
@@ -62,20 +62,20 @@ def validate_email_confirm_token(
     if operation != data.get("operation"):
         return False
     username = data.get("username")
-    if operation == Operations.CONFIRM:
+    if operation == AccountOperations.CONFIRM:
         email = data.get("email")
         user = User.objects(username=username, email=email, is_deleted=False).first()
         if not user:
             return False
         user.update(confirmed_email=True)
 
-    elif operation == Operations.RESET_PASSWORD:
+    elif operation == AccountOperations.RESET_PASSWORD:
         user = User.objects(username=username, is_deleted=False).first()
         if not user:
             return False
         user.set_password(new_password)
 
-    elif operation == Operations.CHANGE_EMAIL:
+    elif operation == AccountOperations.CHANGE_EMAIL:
         if new_email is None:
             return False
         user = User.objects(username=username, is_deleted=False).first()
@@ -86,7 +86,7 @@ def validate_email_confirm_token(
         try:
             user.update(email=new_email, confirmed_email=False)
             user.reload()
-            send_confirm_email_task = email_task(user, cate=Operations.CONFIRM)
+            send_confirm_email_task = email_task(user, cate=AccountOperations.CONFIRM)
             add_email_task_to_redis(send_confirm_email_task)
         except:
             return False

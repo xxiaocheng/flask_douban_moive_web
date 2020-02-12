@@ -40,6 +40,8 @@ celery = "*"
 elasticsearch = "*"
 hashids = "*"
 pre-commit = "*"
+pandas = "*"
+ipykernel = "*"
 
 [requires]
 python_version = "3.6"
