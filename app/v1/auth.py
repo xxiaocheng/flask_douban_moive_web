@@ -8,7 +8,7 @@ from flask_restful import Resource, abort, reqparse
 from app.extensions import api
 from app.helpers.utils import validate_email_confirm_token
 from app.models import User
-from app.settings import Operations
+from app.settings import AccountOperations
 from app.helpers.redis_utils import send_email_limit
 
 auth = HTTPTokenAuth(scheme="Bearer")
@@ -108,16 +108,16 @@ class account(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("token", required=True, location="form")
 
-        if type_name == Operations.CONFIRM:
+        if type_name == AccountOperations.CONFIRM:
             args = parser.parse_args()
             flag = validate_email_confirm_token(
-                token=args["token"], operation=Operations.CONFIRM
+                token=args["token"], operation=AccountOperations.CONFIRM
             )
             if flag:
                 return {"message": "您的账户已确认!"}
             else:
                 return {"message": "错误的 token!"}, 403
-        elif type_name == Operations.RESET_PASSWORD:
+        elif type_name == AccountOperations.RESET_PASSWORD:
             parser.add_argument("password", required=True, location="form")
             args = parser.parse_args()
 
@@ -127,19 +127,19 @@ class account(Resource):
 
             if validate_email_confirm_token(
                 token=args["token"],
-                operation=Operations.RESET_PASSWORD,
+                operation=AccountOperations.RESET_PASSWORD,
                 new_password=args.password,
             ):
                 return {"message": "密码已重置!"}
 
             else:
                 return {"message": "错误的 token!"}, 404
-        elif type_name == Operations.CHANGE_EMAIL:
+        elif type_name == AccountOperations.CHANGE_EMAIL:
             parser.add_argument("newemail", required=True, location="form")
             args = parser.parse_args()
             if not validate_email_confirm_token(
                 token=args["token"],
-                operation=Operations.CHANGE_EMAIL,
+                operation=AccountOperations.CHANGE_EMAIL,
                 new_email=args["newemail"],
             ):
                 return {"message": "错误的token!"}, 400
@@ -167,7 +167,7 @@ class ResentConfirmEmail(Resource):
         if user.confirmed_email:
             return {"message": "您的邮箱已经确认,无需再次确认!"}, 403
 
-        flag = send_email_limit(user, Operations.CONFIRM)
+        flag = send_email_limit(user, AccountOperations.CONFIRM)
         if flag == -2:
             return {"message": "请到 %s 查收邮件!" % user.email}
         else:
@@ -210,7 +210,7 @@ class ResetPassword(Resource):
         if not user:
             return {"message": "邮箱不存在"}, 404
 
-        flag = send_email_limit(user, Operations.RESET_PASSWORD)
+        flag = send_email_limit(user, AccountOperations.RESET_PASSWORD)
 
         if flag == -2:
             return {"message": "请到 %s 查收邮件!" % user.email}
@@ -230,7 +230,7 @@ class ChangeEmail(Resource):
     def post(self):
         user = g.current_user
 
-        flag = send_email_limit(user, Operations.CHANGE_EMAIL)
+        flag = send_email_limit(user, AccountOperations.CHANGE_EMAIL)
         if flag == -2:
             return {"message": "请到 %s 查收邮件!" % user.email}
         else:

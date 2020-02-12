@@ -8,7 +8,7 @@ from app.extensions import api
 from app.helpers.redis_utils import *
 from app.helpers.utils import rename_image
 from app.models import Follow, Role, User
-from app.settings import Operations
+from app.settings import AccountOperations
 
 from .auth import auth, permission_required
 from .schemas import items_schema, user_schema, user_summary_schema
@@ -38,7 +38,7 @@ class UserRegister(Resource):
             username=args["username"], email=args["email"], password=args["password"]
         )
         if user:
-            send_confirm_email_task = email_task(user, cate=Operations.CONFIRM)
+            send_confirm_email_task = email_task(user, cate=AccountOperations.CONFIRM)
             add_email_task_to_redis(send_confirm_email_task)
             return {
                 "message": "Registered User Succeed,please confirm your email of the count.",

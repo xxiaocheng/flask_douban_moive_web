@@ -1,7 +1,6 @@
 from flask import current_app
 from hashids import Hashids
 
-
 hashids = Hashids(salt=current_app.config["HASHIDS_SALT"], min_length=16)
 
 

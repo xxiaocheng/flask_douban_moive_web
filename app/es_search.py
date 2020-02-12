@@ -12,7 +12,7 @@ def add_to_index(index, model):
         return
     payload = {}
     for field in model.__searchable__:
-        payload[field] = getattr(model, field["key"])
+        payload[field["key"]] = getattr(model, field["key"])
     current_app.elasticsearch.index(index=index, id=model.id, body=payload)
 
 
