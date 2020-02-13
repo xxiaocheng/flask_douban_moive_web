@@ -22,7 +22,7 @@ from app.v2.responses import (
     get_item_pagination,
     ok,
     user_resource_fields,
-    users_pagination_resource_fields,
+    get_pagination_resource_fields,
 )
 
 
@@ -215,7 +215,9 @@ class Follow(Resource):
             follower_or_following=follower_or_following,
         )
 
-        return ok("ok", data=marshal(p, users_pagination_resource_fields))
+        return ok(
+            "ok", data=marshal(p, get_pagination_resource_fields(user_resource_fields))
+        )
 
     @auth.login_required
     def post(self, username, follower_or_following):

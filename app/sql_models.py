@@ -208,7 +208,7 @@ class ChinaArea(db.Model):
         db.session.commit()
 
     @staticmethod
-    @cache.cached(timeout=99 ^ 99, key_prefix="get_all_data_area")
+    @cache.cached(timeout=60 * 60 * 24 * 7, key_prefix="get_all_data_area")
     def get_all_area_date():
         res = list(
             db.session.execute(
@@ -499,14 +499,17 @@ class User(SearchableMixin, MyBaseModel):
         :return: Rating or None
         """
         if Rating.query.filter_by(movie_id=movie.id, user_id=self.id).first():
-            return None
+            return False
         r = Rating.create_rating_with_tags(
-            score=0, comment=comment, category=RatingType.WISH, tags_name=tags_name
+            self,
+            movie,
+            score=0,
+            comment=comment,
+            category=RatingType.WISH,
+            tags_name=tags_name,
         )
-        r.movie_id = movie.id
-        self.ratings.append(r)
         add_rating_to_rank_redis(movie)
-        return r
+        return True
 
     def do_movie(self, movie, score=0, comment=None, tags_name=[]):
         """
@@ -518,16 +521,19 @@ class User(SearchableMixin, MyBaseModel):
         :return: Rating or None
         """
         if Rating.query.filter_by(movie_id=movie.id, user_id=self.id).first():
-            return None
+            return False
         if movie.subtype != MovieType.TV:
-            return None
+            return False
         r = Rating.create_rating_with_tags(
-            score=score, comment=comment, category=RatingType.DO, tags_name=tags_name
+            self,
+            movie,
+            score=score,
+            comment=comment,
+            category=RatingType.DO,
+            tags_name=tags_name,
         )
-        r.movie_id = movie.id
-        self.ratings.append(r)
         add_rating_to_rank_redis(movie)
-        return r
+        return True
 
     def collect_movie(self, movie, score=0, comment=None, tags_name=[]):
         """
@@ -539,17 +545,17 @@ class User(SearchableMixin, MyBaseModel):
         :return: Rating or None
         """
         if Rating.query.filter_by(movie_id=movie.id, user_id=self.id).first():
-            return None
+            return False
         r = Rating.create_rating_with_tags(
+            self,
+            movie,
             score=score,
             comment=comment,
             category=RatingType.COLLECT,
             tags_name=tags_name,
         )
-        r.movie_id = movie.id
-        self.ratings.append(r)
         add_rating_to_rank_redis(movie)
-        return r
+        return True
 
     def delete_rating_on(self, movie):
         """
@@ -668,23 +674,24 @@ class Celebrity(SearchableMixin, MyBaseModel):
         aka_en_list=[],
     ):
         """"""
-        if Celebrity.query.filter(
-            or_(Celebrity.douban_id == douban_id, Celebrity.imdb_id == imdb_id)
-        ).first():
-            return None
-        else:
-            celebrity = Celebrity(
-                name=name,
-                gender=gender,
-                avatar_url_last=avatar_url_last,
-                douban_id=douban_id,
-                imdb_id=imdb_id,
-                born_place=born_place,
-                name_en=name_en,
-                aka_list=" ".join(aka_list),
-                aka_en_list=" ".join(aka_en_list),
-            )
-            return celebrity
+        if douban_id:
+            if Celebrity.query.filter_by(douban_id=douban_id).first():
+                return None
+        if imdb_id:
+            if Celebrity.query.filter_by(imdb_id=imdb_id).first():
+                return None
+        celebrity = Celebrity(
+            name=name,
+            gender=gender,
+            avatar_url_last=avatar_url_last,
+            douban_id=douban_id,
+            imdb_id=imdb_id,
+            born_place=born_place,
+            name_en=name_en,
+            aka_list=" ".join(aka_list),
+            aka_en_list=" ".join(aka_en_list),
+        )
+        return celebrity
 
     @property
     def avatar_url(self):
@@ -803,7 +810,7 @@ class Movie(SearchableMixin, MyBaseModel):
     cinema_status = db.Column(
         db.Integer, default=MovieCinemaStatus.FINISHED, nullable=False
     )
-    aka_list = db.Column(db.Text)
+    aka_list = db.Column(db.Text)  # split by '|'
     ratings = db.relationship(
         "Rating", backref="movie", lazy="dynamic", cascade="all, delete-orphan"
     )
@@ -852,35 +859,36 @@ class Movie(SearchableMixin, MyBaseModel):
         directors_obj=[],
         celebrities_obj=[],
     ):
-        if Movie.query.filter(
-            or_(Movie.douban_id == douban_id, Movie.imdb_id == imdb_id)
-        ).first():
-            return None
-        else:
-            movie = Movie(
-                title=title,
-                subtype=subtype,
-                image_url_last=image_url_last,
-                summary=summary,
-                douban_id=douban_id,
-                imdb_id=imdb_id,
-                original_title=original_title,
-                year=year,
-                seasons_count=seasons_count,
-                episodes_count=episodes_count,
-                current_season=current_season,
-                cinema_status=cinema_status,
-                aka_list=" ".join(aka_list),
-            )
-            for genre_name in genres_name:
-                genre_obj = Genre.create_one(genre_name)
-                movie.genres.append(genre_obj)
-            for country_name in countries_name:
-                country_obj = Country.create_one(country_name)
-                movie.countries.append(country_obj)
-            movie.directors += directors_obj
-            movie.celebrities += celebrities_obj
-            return movie
+        if douban_id:
+            if Movie.query.filter_by(douban_id=douban_id).first():
+                return None
+        if imdb_id:
+            if Movie.query.filter_by(imdb_id=imdb_id).first():
+                return None
+        movie = Movie(
+            title=title,
+            subtype=subtype,
+            image_url_last=image_url_last,
+            summary=summary,
+            douban_id=douban_id,
+            imdb_id=imdb_id,
+            original_title=original_title,
+            year=year,
+            seasons_count=seasons_count,
+            episodes_count=episodes_count,
+            current_season=current_season,
+            cinema_status=cinema_status,
+            aka_list=" ".join(aka_list),
+        )
+        for genre_name in genres_name:
+            genre_obj = Genre.create_one(genre_name)
+            movie.genres.append(genre_obj)
+        for country_name in countries_name:
+            country_obj = Country.create_one(country_name)
+            movie.countries.append(country_obj)
+        movie.directors += directors_obj
+        movie.celebrities += celebrities_obj
+        return movie
 
     @property
     def score(self):
@@ -1012,16 +1020,20 @@ class Rating(MyBaseModel):
 
     @staticmethod
     def create_rating_with_tags(
-        score=0, comment="", category=RatingType.COLLECT, tags_name=[]
+        user, movie, score=0, comment="", category=RatingType.COLLECT, tags_name=[]
     ):
         """
         create one rating with tags but not commit
+        :param user:
+        :param movie:
         :param score: score
         :param comment: comment
         :param category: category must be in RatingType
         :return: Rating object
         """
         r = Rating(score=score, comment=comment, category=category)
+        r.user = user
+        r.movie = movie
         for tag_name in tags_name:
             rating_tag = Tag.create_one(tag_name=tag_name)
             r.tags.append(rating_tag)
@@ -1070,6 +1082,10 @@ class Rating(MyBaseModel):
             return False
         self.report_by_users.append(user)
         return True
+
+    @property
+    def like_count(self):
+        return self.like_by_users.count()
 
 
 db.event.listen(db.session, "before_commit", User.before_commit)

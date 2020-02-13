@@ -1,5 +1,6 @@
 from flask import url_for
 from flask_restful import fields
+from app.utils.hashid import encode_id_to_str
 
 
 class ErrorCode:
@@ -21,6 +22,11 @@ class ErrorCode:
     INVALID_TOKEN = 10011
     EMAIL_ALREADY_EXISTS = 10012
 
+    GENRES_NOT_FOUND = 20404
+    MOVIE_NOT_FOUND = 30404
+    RATING_ALREADY_EXISTS = 40001
+    MOVIE_ALREADY_EXISTS = 30001
+
 
 ERROR_MSG_MAP = {
     ErrorCode.SUCCESS: "OK",
@@ -39,6 +45,10 @@ ERROR_MSG_MAP = {
     ErrorCode.EMAIL_ALREADY_CONFIRMED: "重复的邮箱确认",
     ErrorCode.INVALID_TOKEN: "非法的 TOKEN",
     ErrorCode.EMAIL_ALREADY_EXISTS: "邮箱已存在",
+    ErrorCode.GENRES_NOT_FOUND: "该类型不存在",
+    ErrorCode.MOVIE_NOT_FOUND: "该电影不存在",
+    ErrorCode.RATING_ALREADY_EXISTS: "评价已存在",
+    ErrorCode.MOVIE_ALREADY_EXISTS: "电影已存在",
 }
 
 
@@ -65,6 +75,12 @@ class ItemPagination:
 
 
 def get_item_pagination(pagination, endpoint, **kwargs):
+    """
+    :param pagination: pagination object
+    :param endpoint: view endpoint
+    :param kwargs: other args for url_for()
+    :return:
+    """
     prev = next = None
     if pagination.has_prev:
         prev = url_for(
@@ -116,12 +132,107 @@ user_resource_fields = {
     "followings_count": fields.Integer,
 }
 
-users_pagination_resource_fields = {
-    "items": fields.List(fields.Nested(user_resource_fields)),
-    "prev": fields.String,
-    "next": fields.String,
-    "first": fields.String,
-    "last": fields.String,
-    "total": fields.Integer,
-    "pages": fields.Integer,
+
+def get_pagination_resource_fields(resource_fields):
+    return {
+        "items": fields.List(fields.Nested(resource_fields)),
+        "prev": fields.String,
+        "next": fields.String,
+        "first": fields.String,
+        "last": fields.String,
+        "total": fields.Integer,
+        "pages": fields.Integer,
+    }
+
+
+movie_summary_resource_fields = {
+    "id": fields.String(attribute=lambda x: encode_id_to_str(x.id)),
+    "year": fields.Integer,
+    "title": fields.String,
+    "subtype": fields.String,
+    "image_url": fields.String,
+    "score": fields.Float,
+}
+
+celebrity_summary_resource_fields = {
+    "id": fields.String(attribute=lambda x: encode_id_to_str(x.id)),
+    "name": fields.String,
+    "avatar_url": fields.String,
+}
+
+country_resource_fields = {
+    "id": fields.String(attribute=lambda x: encode_id_to_str(x.id)),
+    "country_name": fields.String,
+}
+genre_resource_fields = {
+    "id": fields.String(attribute=lambda x: encode_id_to_str(x.id)),
+    "genre_name": fields.String,
+}
+
+
+class SplitToList(fields.Raw):
+    def format(self, value):
+        return value.split(" ")
+
+
+movie_resource_fields = {
+    "id": fields.String(attribute=lambda x: encode_id_to_str(x.id)),
+    "year": fields.Integer,
+    "title": fields.String,
+    "subtype": fields.String,
+    "image_url": fields.String,
+    "score": fields.Float,
+    "douban_id": fields.String,
+    "wish_by_count": fields.Integer(
+        attribute=lambda x: x.user_wish_rating_query.count()
+    ),
+    "do_by_count": fields.Integer(attribute=lambda x: x.user_do_rating_query.count()),
+    "collect_by_count": fields.Integer(
+        attribute=lambda x: x.user_collect_query.count()
+    ),
+    "seasons_count": fields.Integer,
+    "episodes_count": fields.Integer,
+    "current_season": fields.Integer,
+    "original_title": fields.String,
+    "summary": fields.String,
+    "aka_list": SplitToList,
+    "countries": fields.List(fields.Nested(country_resource_fields)),
+    "genres": fields.List(fields.Nested(genre_resource_fields)),
+    "directors": fields.List(fields.Nested(celebrity_summary_resource_fields)),
+    "celebrities": fields.List(fields.Nested(celebrity_summary_resource_fields)),
+}
+
+celebrity_resource_fields = {
+    "id": fields.String(attribute=lambda x: encode_id_to_str(x.id)),
+    "douban_id": fields.String,
+    "name": fields.String,
+    "avatar_url": fields.String,
+    "gender": fields.Integer,
+    "born_place": fields.String,
+    "name_en": fields.String,
+    "aka_list": SplitToList,
+    "aka_en_list": SplitToList,
+}
+
+rating_resource_fields = {
+    "id": fields.String(attribute=lambda x: encode_id_to_str(x.id)),
+    "category": fields.Integer,
+    "comment": fields.String,
+    "score": fields.Integer,
+    "when": fields.DateTime(dt_format="iso8601", attribute="created_at"),
+    "username": fields.String(attribute=lambda x: x.user.username),
+    "user_avatar": fields.String(attribute=lambda x: x.user.avatar_thumb),
+    "like_count": fields.Integer,
+}
+
+rating_with_movie_resource_fields = {
+    "id": fields.String(attribute=lambda x: encode_id_to_str(x.id)),
+    "category": fields.Integer,
+    "comment": fields.String,
+    "score": fields.Integer,
+    "when": fields.DateTime(dt_format="iso8601", attribute="created_at"),
+    "username": fields.String(attribute=lambda x: x.user.username),
+    "user_avatar": fields.String(attribute=lambda x: x.user.avatar_thumb),
+    "like_count": fields.Integer,
+    "movie": fields.Nested(movie_resource_fields),
 }

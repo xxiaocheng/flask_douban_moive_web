@@ -1,21 +1,18 @@
-import datetime
-import json
 import math
 import os
 
-import requests
 from flask import abort, current_app, g, redirect, url_for
 from flask_restful import Resource, reqparse
 from mongoengine.errors import ValidationError
 from mongoengine.queryset.visitor import Q
 from werkzeug.datastructures import FileStorage
 
-from app.extensions import api, cache
+from app.extensions import api
 from app.helpers.redis_utils import *
 from app.helpers.utils import query_by_id_list, rename_image
 from app.models import Celebrity, Cinema, Follow, Movie, Rating, Tag, User
 
-from .auth import auth, email_confirm_required, permission_required
+from .auth import auth, permission_required
 from .schemas import (
     items_schema,
     movie_schema,

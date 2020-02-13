@@ -55,35 +55,20 @@ def _movie_rank_redis_zset_paginate(
     )
 
 
-def get_week_rank_movie_ids(page=1, per_page=20):
+def get_rank_movie_ids_with_range(days, page=1, per_page=20):
     """
-    :param page:
-    :param per_page:
-    :return: list of movie ids, total
-    """
-    today = datetime.datetime.today()
-    keys = [
-        "rating:" + (today - datetime.timedelta(days=days)).strftime("%y%m%d")
-        for days in range(0, 7)
-    ]
-    return _movie_rank_redis_zset_paginate(
-        keys=keys, time_range="week", page=page, per_page=per_page
-    )
-
-
-def get_month_rank_movie_ids(page=1, per_page=20):
-    """
-    :param page:
-    :param per_page:
-    :return: list of movie ids, total
+    :param days: count of days
+    :param page: current page
+    :param per_page: items count of one page
+    :return:
     """
     today = datetime.datetime.today()
     keys = [
         "rating:" + (today - datetime.timedelta(days=days)).strftime("%y%m%d")
-        for days in range(0, 30)
+        for days in range(0, days)
     ]
     return _movie_rank_redis_zset_paginate(
-        keys=keys, time_range="month", page=page, per_page=per_page
+        keys=keys, time_range=str(days), page=page, per_page=per_page
     )
 
 
