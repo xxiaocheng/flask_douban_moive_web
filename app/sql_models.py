@@ -11,6 +11,7 @@ from sqlalchemy import or_, UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.mysql import TINYINT
 from werkzeug.security import check_password_hash, generate_password_hash
+from elasticsearch.exceptions import NotFoundError
 
 from app.const import (
     ROLES_PERMISSIONS_MAP,
@@ -24,6 +25,7 @@ from app.extensions import sql_db as db
 from app.extensions import cache
 from app.es_search import add_to_index, remove_from_index, query_index
 from app.utils.redis_utils import add_rating_to_rank_redis
+from flask import current_app
 
 
 class SearchableMixin:
@@ -35,7 +37,10 @@ class SearchableMixin:
         :param per_page: count/per_page
         :return: flask_sqlalchemy.BaseQuery, total
         """
-        ids, total = query_index(cls, expression, page, per_page)
+        try:
+            ids, total = query_index(cls, expression, page, per_page)
+        except NotFoundError:
+            return [], 0
         if total == 0:
             return cls.query.filter_by(id=-1), 0
         when = []
@@ -65,13 +70,16 @@ class SearchableMixin:
 
     @classmethod
     def after_commit(cls, session):
+        print(1)
+        print(cls)
         if hasattr(session, "_changes") and session._changes:
+            print(2)
             for obj in session._changes["add"]:
-                add_to_index(cls.__tablename__, obj)
+                add_to_index(obj.__tablename__, obj)
             for obj in session._changes["update"]:
-                add_to_index(cls.__tablename__, obj)
+                add_to_index(obj.__tablename__, obj)
             for obj in session._changes["delete"]:
-                remove_from_index(cls.__tablename__, obj)
+                remove_from_index(obj.__tablename__, obj)
             session._changes = None
 
     @classmethod

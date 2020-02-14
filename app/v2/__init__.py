@@ -26,6 +26,7 @@ from app.v2.user import (
     Users,
 )
 from app.v2.celebrity import Celebrity, Celebrities, CelebrityMovie
+from app.v2.search import Search
 
 
 api_bp = Blueprint("api", __name__, url_prefix="/api/v1")
@@ -69,3 +70,6 @@ api.add_resource(Celebrities, "/celebrity", endpoint="Celebrities")
 api.add_resource(
     CelebrityMovie, "/celebrity/<celebrity_hash_id>/movie", endpoint="CelebrityMovie"
 )
+
+
+api.add_resource(Search, "/search", endpoint="Search")
