@@ -27,6 +27,7 @@ from app.v2.user import (
 )
 from app.v2.celebrity import Celebrity, Celebrities, CelebrityMovie
 from app.v2.search import Search
+from app.v2.tag import Genre, Country, Year
 
 
 api_bp = Blueprint("api", __name__, url_prefix="/api/v1")
@@ -73,3 +74,8 @@ api.add_resource(
 
 
 api.add_resource(Search, "/search", endpoint="Search")
+
+
+api.add_resource(Genre, "/genre", endpoint="Genre")
+api.add_resource(Country, "/country", endpoint="Country")
+api.add_resource(Year, "/year", endpoint="Year")
