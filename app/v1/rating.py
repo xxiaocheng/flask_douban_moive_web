@@ -63,7 +63,7 @@ class RatingAction(Resource):
             rating.delete_self()
             return {"message": "评价已删除!"}
         else:
-            return {"smessage": "permission required"}, 403
+            return {"message": "permission required"}, 403
 
 
 api.add_resource(RatingAction, "/rating/<ratingid>")

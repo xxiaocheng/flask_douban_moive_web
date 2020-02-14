@@ -25,6 +25,11 @@ class ErrorCode:
     GENRES_NOT_FOUND = 20404
     MOVIE_NOT_FOUND = 30404
     RATING_ALREADY_EXISTS = 40001
+    RATING_NOT_FOUND = 40404
+    RATING_LIKE_ALREADY_EXISTS = 40002
+    RATING_LIKE_NOT_FOUND = 40003
+    RATING_REPORT_FORBIDDEN = 40004
+    RATING_DELETE_FORBIDDEN = 40005
     MOVIE_ALREADY_EXISTS = 30001
     CELEBRITY_NOT_FOUND = 50404
     CELEBRITY_ALREADY_EXISTS = 50001
@@ -53,6 +58,11 @@ ERROR_MSG_MAP = {
     ErrorCode.MOVIE_ALREADY_EXISTS: "电影已存在",
     ErrorCode.CELEBRITY_NOT_FOUND: "艺人不存在",
     ErrorCode.CELEBRITY_ALREADY_EXISTS: "艺人已存在",
+    ErrorCode.RATING_NOT_FOUND: "评论未找到",
+    ErrorCode.RATING_LIKE_ALREADY_EXISTS: "已点赞过该评论",
+    ErrorCode.RATING_LIKE_NOT_FOUND: "尚未点赞该评论",
+    ErrorCode.RATING_REPORT_FORBIDDEN: "举报评价被禁止",
+    ErrorCode.RATING_DELETE_FORBIDDEN: "禁止删除评论",
 }
 
 
@@ -149,6 +159,13 @@ user_resource_fields = {
     "last_login_time": fields.DateTime(dt_format="iso8601"),
     "followers_count": fields.Integer,
     "followings_count": fields.Integer,
+}
+
+user_summary_resource_fields = {
+    "username": fields.String,
+    "avatar_thumb": fields.String,
+    "avatar_image": fields.String,
+    "signature": fields.String,
 }
 
 
@@ -254,4 +271,13 @@ rating_with_movie_resource_fields = {
     "user_avatar": fields.String(attribute=lambda x: x.user.avatar_thumb),
     "like_count": fields.Integer,
     "movie": fields.Nested(movie_resource_fields),
+}
+
+notification_resource_fields = {
+    "receiver_user": fields.Nested(user_summary_resource_fields),
+    "send_user": fields.Nested(user_summary_resource_fields),
+    "is_read": fields.Boolean,
+    "category": fields.Integer,
+    "information_text": fields.String,
+    "rating": fields.Nested(rating_resource_fields, allow_null=True),
 }

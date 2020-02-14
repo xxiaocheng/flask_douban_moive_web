@@ -70,10 +70,7 @@ class SearchableMixin:
 
     @classmethod
     def after_commit(cls, session):
-        print(1)
-        print(cls)
         if hasattr(session, "_changes") and session._changes:
-            print(2)
             for obj in session._changes["add"]:
                 add_to_index(obj.__tablename__, obj)
             for obj in session._changes["update"]:
@@ -156,6 +153,7 @@ class Notification(MyBaseModel):
     rating_id = db.Column(
         db.Integer, db.ForeignKey("ratings.id", ondelete="CASCADE"), nullable=True
     )
+    rating = db.relationship("Rating", backref="notification", lazy=True)
 
     @staticmethod
     def create_one(receiver_user_id, sender_user_id, category, rating_id=None):
@@ -1073,7 +1071,7 @@ class Rating(MyBaseModel):
         self.like_by_users.remove(user)
         notification = Notification.query.filter_by(
             receiver_user_id=self.user.id,
-            sent_user_id=user.id,
+            sender_user_id=user.id,
             category=NotificationType.RATING_ACTION,
         ).first()
         if notification:
@@ -1086,6 +1084,8 @@ class Rating(MyBaseModel):
         :param user:
         :return: True or False
         """
+        if self.user_id == user.id:
+            return False
         if self.report_by_users.filter_by(id=user.id).first():
             return False
         self.report_by_users.append(user)
@@ -1094,6 +1094,10 @@ class Rating(MyBaseModel):
     @property
     def like_count(self):
         return self.like_by_users.count()
+
+    @property
+    def report_count(self):
+        return self.report_by_users.count()
 
 
 db.event.listen(db.session, "before_commit", User.before_commit)

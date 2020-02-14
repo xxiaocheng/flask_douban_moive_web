@@ -28,6 +28,8 @@ from app.v2.user import (
 from app.v2.celebrity import Celebrity, Celebrities, CelebrityMovie
 from app.v2.search import Search
 from app.v2.tag import Genre, Country, Year
+from app.v2.rating import Rating, ReportedRating
+from app.v2.notification import NotificationCount, Notification
 
 
 api_bp = Blueprint("api", __name__, url_prefix="/api/v1")
@@ -79,3 +81,17 @@ api.add_resource(Search, "/search", endpoint="Search")
 api.add_resource(Genre, "/genre", endpoint="Genre")
 api.add_resource(Country, "/country", endpoint="Country")
 api.add_resource(Year, "/year", endpoint="Year")
+
+
+api.add_resource(Rating, "/rating/<rating_hash_id>", endpoint="Rating")
+api.add_resource(ReportedRating, "/rating/reported", endpoint="ReportedRating")
+
+
+api.add_resource(
+    NotificationCount, "/notification/new_count", endpoint="NotificationCount"
+)
+api.add_resource(
+    Notification,
+    "/notification/<any(friendship,like):type_name>",
+    endpoint="Notification",
+)

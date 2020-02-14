@@ -297,15 +297,19 @@ class UserModelsTestCase(unittest.TestCase):
             name="成龙",
             gender=GenderType.MALE,
             avatar_url_last="backiee-1119391e8a393275e47b82.jpg",
+            douban_id="1",
+            imdb_id="imdb1",
             born_place="HonKong",
             name_en="ChengLong",
             aka_list=["a", "aa", "aaa"],
             aka_en_list=["A", "AA", "AAA"],
         )
         celebrity_two = Celebrity.create_one(
-            name="石原里美",
-            gender=0,
+            name="成龙",
+            gender=GenderType.MALE,
             avatar_url_last="backiee-1119391e8a393275e47b82.jpg",
+            douban_id="2",
+            imdb_id="imdb2",
             born_place="HonKong",
             name_en="ChengLong",
             aka_list=["a", "aa", "aaa"],
@@ -313,10 +317,12 @@ class UserModelsTestCase(unittest.TestCase):
         )
 
         movie_one = Movie.create_one(
-            title="美国",
+            title="当幸福来敲门",
             subtype=MovieType.TV,
             image_url_last="backiee-1119391e8a393275e47b82.jpg",
             year=2006,
+            douban_id=1,
+            imdb_id="imdb2",
             original_title="dang xingfu lai qiaomen",
             seasons_count=1,
             episodes_count=1,

@@ -568,4 +568,4 @@ class Movies(Resource):
             sql_db.session.commit()
             return ok("Movie Created!", http_status_code=201)
         else:
-            return error(ErrorCode.MOVIE_ALREADY_EXISTS, 401)
+            return error(ErrorCode.MOVIE_ALREADY_EXISTS, 403)
