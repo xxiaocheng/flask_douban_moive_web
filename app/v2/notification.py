@@ -1,18 +1,18 @@
-from flask_restful import Resource, reqparse, marshal, inputs
 from flask import g
+from flask_restful import Resource, inputs, marshal, reqparse
 
 from app import sql_db
-from app.v2.responses import (
-    error,
-    ok,
-    ErrorCode,
-    get_pagination_resource_fields,
-    get_item_pagination,
-    notification_resource_fields,
-)
-from app.utils.auth_decorator import auth
-from app.sql_models import Notification as NotificationModel
 from app.const import NotificationType
+from app.sql_models import Notification as NotificationModel
+from app.utils.auth_decorator import auth
+from app.v2.responses import (
+    ErrorCode,
+    error,
+    get_item_pagination,
+    get_pagination_resource_fields,
+    notification_resource_fields,
+    ok,
+)
 
 
 class NotificationCount(Resource):

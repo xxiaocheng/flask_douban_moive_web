@@ -1,18 +1,20 @@
-from flask_restful import Resource, reqparse, marshal, inputs
-from app.v2.responses import (
-    celebrity_resource_fields,
-    ErrorCode,
-    ok,
-    error,
-    get_pagination_resource_fields,
-    get_item_pagination,
-    movie_summary_resource_fields,
-)
-from app.sql_models import Celebrity as CelebrityModel, Movie
+from flask_restful import Resource, inputs, marshal, reqparse
+
+from app.const import GenderType
+from app.extensions import sql_db
+from app.sql_models import Celebrity as CelebrityModel
+from app.sql_models import Movie
 from app.utils.auth_decorator import auth, permission_required
 from app.utils.hashid import decode_str_to_id
-from app.extensions import sql_db
-from app.const import GenderType
+from app.v2.responses import (
+    ErrorCode,
+    celebrity_resource_fields,
+    error,
+    get_item_pagination,
+    get_pagination_resource_fields,
+    movie_summary_resource_fields,
+    ok,
+)
 
 
 class Celebrity(Resource):

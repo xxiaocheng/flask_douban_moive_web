@@ -20,9 +20,9 @@ from app.v2.responses import (
     ErrorCode,
     error,
     get_item_pagination,
+    get_pagination_resource_fields,
     ok,
     user_resource_fields,
-    get_pagination_resource_fields,
 )
 
 

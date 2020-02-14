@@ -1,12 +1,11 @@
-from flask_restful import Resource, reqparse, marshal
-from app.sql_models import (
-    Genre as GenreModel,
-    Country as CountryModel,
-    Movie as MovieModel,
-)
+from flask_restful import Resource, marshal, reqparse
+
 from app.extensions import cache
+from app.sql_models import Country as CountryModel
+from app.sql_models import Genre as GenreModel
+from app.sql_models import Movie as MovieModel
 from app.utils.auth_decorator import auth
-from app.v2.responses import error, ok, country_resource_fields, genre_resource_fields
+from app.v2.responses import country_resource_fields, error, genre_resource_fields, ok
 
 
 class Genre(Resource):

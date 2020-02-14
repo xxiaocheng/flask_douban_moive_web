@@ -1,14 +1,15 @@
-from flask_restful import reqparse, Resource, inputs, marshal
+from flask_restful import Resource, inputs, marshal, reqparse
 from flask_sqlalchemy import Pagination
-from app.sql_models import User, Movie, Celebrity
+
+from app.sql_models import Celebrity, Movie, User
 from app.v2.responses import (
+    celebrity_summary_resource_fields,
     error,
+    get_item_pagination,
+    get_pagination_resource_fields,
+    movie_summary_resource_fields,
     ok,
     user_resource_fields,
-    movie_summary_resource_fields,
-    celebrity_summary_resource_fields,
-    get_pagination_resource_fields,
-    get_item_pagination,
 )
 
 
