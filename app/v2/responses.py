@@ -26,6 +26,8 @@ class ErrorCode:
     MOVIE_NOT_FOUND = 30404
     RATING_ALREADY_EXISTS = 40001
     MOVIE_ALREADY_EXISTS = 30001
+    CELEBRITY_NOT_FOUND = 50404
+    CELEBRITY_ALREADY_EXISTS = 50001
 
 
 ERROR_MSG_MAP = {
@@ -49,21 +51,38 @@ ERROR_MSG_MAP = {
     ErrorCode.MOVIE_NOT_FOUND: "该电影不存在",
     ErrorCode.RATING_ALREADY_EXISTS: "评价已存在",
     ErrorCode.MOVIE_ALREADY_EXISTS: "电影已存在",
+    ErrorCode.CELEBRITY_NOT_FOUND: "艺人不存在",
+    ErrorCode.CELEBRITY_ALREADY_EXISTS: "艺人已存在",
 }
 
 
 def ok(message, data=None, http_status_code=200, **kwargs):
+    """
+    used when no error
+    :param message: some message
+    :param data: data for return
+    :param http_status_code: http status code
+    :param kwargs: other data for return
+    :return:
+    """
     return {"msg": message, "data": data, **kwargs}, http_status_code
 
 
 def error(error_code, http_status_code, **kwargs):
+    """
+    used when error
+    :param error_code:
+    :param http_status_code:
+    :param kwargs:
+    :return:
+    """
     return (
         {"msg": ERROR_MSG_MAP[error_code], "error_code": error_code, **kwargs},
         http_status_code,
     )
 
 
-class ItemPagination:
+class _ItemPagination:
     def __init__(self, items, first, last, total, pages, prev=None, next=None):
         self.items = items
         self.prev = prev
@@ -108,7 +127,7 @@ def get_item_pagination(pagination, endpoint, **kwargs):
         _external=True,
         **kwargs
     )
-    return ItemPagination(
+    return _ItemPagination(
         pagination.items,
         first,
         last,

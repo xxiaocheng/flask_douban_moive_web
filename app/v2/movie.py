@@ -522,7 +522,7 @@ class Movies(Resource):
         if args.subtype == "movie":
             args.seasons_count = args.episodes_count = args.current_season = None
         if args.aka:
-            args.aka = args.aka.split(" ")
+            args.aka = args.aka.split("/")
         if args.genres_name:
             args.genres_name = args.genres_name.split(" ")
         if args.countries:
