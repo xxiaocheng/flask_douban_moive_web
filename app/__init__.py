@@ -12,12 +12,10 @@ from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from celery import Celery
 from elasticsearch import Elasticsearch
 
-from app.extensions import avatars, cache, cors, db, api, redis_store, sql_db, migrate
+from app.extensions import cache, cors, redis_store, sql_db, migrate
 from app.settings import config, BaseConfig
 from app.sql_models import ChinaArea
 
-# migrate the databases
-from app.sql_models import User
 
 sentry_sdk.init(
     dsn=os.getenv("SENTRY_DSN"),
@@ -60,13 +58,10 @@ def create_app(config_name=None):
 
 def register_extensions(app):
     cors.init_app(app)
-    db.init_app(app)
     cache.init_app(app)
-    avatars.init_app(app)
     redis_store.init_app(app)
     sql_db.init_app(app)
     migrate.init_app(app, db=sql_db)
-    # api.init_app(api_bp)  # flask_restful 文档关于蓝本的用法
 
 
 def register_blueprints(app):
@@ -130,16 +125,17 @@ def register_logger(app):
     file_handler.setFormatter(request_formatter)
     file_handler.setLevel(logging.INFO)
 
-    # if not app.debug:
-    #     app.logger.addHandler(file_handler)
-    app.logger.addHandler(file_handler)
+    if not app.debug:
+        app.logger.addHandler(file_handler)
 
 
 def register_commands(app):
     @app.cli.command("init")
     @click.option("--drop", is_flag=True, help="Create after drop.")
     def init_db(drop):
-        """Initialize the database."""
+        """Initialize the database.
+        flask init --drop
+        """
         if drop:
             click.confirm(
                 "This operation will delete the database, do you want to continue?",

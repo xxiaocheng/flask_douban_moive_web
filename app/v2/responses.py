@@ -1,5 +1,6 @@
-from flask import url_for
+from flask import g, url_for
 from flask_restful import fields
+
 from app.utils.hashid import encode_id_to_str
 
 
@@ -208,8 +209,19 @@ genre_resource_fields = {
 
 class SplitToList(fields.Raw):
     def format(self, value):
-        return value.split(" ")
+        return value.split("/")
 
+
+rating_without_user_resource_fields = {
+    "id": fields.String(attribute=lambda x: encode_id_to_str(x.id)),
+    "category": fields.Integer,
+    "comment": fields.String,
+    "score": fields.Integer,
+    "when": fields.DateTime(dt_format="iso8601", attribute="created_at"),
+    "tags": fields.String(
+        attribute=lambda x: [tag.tag_name for tag in x.tags if x.tags]
+    ),
+}
 
 movie_resource_fields = {
     "id": fields.String(attribute=lambda x: encode_id_to_str(x.id)),
@@ -236,6 +248,11 @@ movie_resource_fields = {
     "genres": fields.List(fields.Nested(genre_resource_fields)),
     "directors": fields.List(fields.Nested(celebrity_summary_resource_fields)),
     "celebrities": fields.List(fields.Nested(celebrity_summary_resource_fields)),
+    "me_to_movie": fields.Nested(
+        rating_without_user_resource_fields,
+        allow_null=True,
+        attribute=lambda x: x.ratings.filter_by(user_id=g.current_user.id).first(),
+    ),
 }
 
 celebrity_resource_fields = {
@@ -259,6 +276,14 @@ rating_resource_fields = {
     "username": fields.String(attribute=lambda x: x.user.username),
     "user_avatar": fields.String(attribute=lambda x: x.user.avatar_thumb),
     "like_count": fields.Integer,
+    "me_like_rating": fields.Boolean(
+        attribute=lambda x: True
+        if x.like_by_users.filter_by(id=g.current_user.id).first()
+        else False
+    ),
+    "tags": fields.String(
+        attribute=lambda x: [tag.tag_name for tag in x.tags if x.tags]
+    ),
 }
 
 rating_with_movie_resource_fields = {

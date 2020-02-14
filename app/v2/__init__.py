@@ -1,18 +1,23 @@
 from flask import Blueprint
 from flask_restful import Api
 
+from app.v2.celebrity import Celebrities, Celebrity, CelebrityMovie
 from app.v2.movie import (
     ChoiceMovie,
     CinemaMovie,
+    FollowFeed,
     LeaderBoard,
     Movie,
     MovieGenresRank,
     MovieRecommend,
+    Movies,
     MovieUserRating,
     UserMovie,
-    FollowFeed,
-    Movies,
 )
+from app.v2.notification import Notification, NotificationCount
+from app.v2.rating import Rating, ReportedRating
+from app.v2.search import Search
+from app.v2.tag import Country, Genre, Year
 from app.v2.user import (
     AuthToken,
     EmailToken,
@@ -25,12 +30,6 @@ from app.v2.user import (
     UserRole,
     Users,
 )
-from app.v2.celebrity import Celebrity, Celebrities, CelebrityMovie
-from app.v2.search import Search
-from app.v2.tag import Genre, Country, Year
-from app.v2.rating import Rating, ReportedRating
-from app.v2.notification import NotificationCount, Notification
-
 
 api_bp = Blueprint("api", __name__, url_prefix="/api/v1")
 

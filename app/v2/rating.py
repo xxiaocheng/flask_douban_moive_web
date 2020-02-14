@@ -1,19 +1,20 @@
-from flask_restful import Resource, marshal, reqparse, inputs
 from flask import g
+from flask_restful import Resource, inputs, marshal, reqparse
 from sqlalchemy import func
 
 from app.extensions import sql_db
+from app.sql_models import Rating as RatingModel
+from app.sql_models import rating_reports
+from app.utils.auth_decorator import auth, permission_required
 from app.utils.hashid import decode_str_to_id
 from app.v2.responses import (
-    ok,
-    error,
     ErrorCode,
-    get_pagination_resource_fields,
+    error,
     get_item_pagination,
+    get_pagination_resource_fields,
+    ok,
     rating_with_movie_resource_fields,
 )
-from app.sql_models import Rating as RatingModel, rating_reports
-from app.utils.auth_decorator import auth, permission_required
 
 
 class Rating(Resource):

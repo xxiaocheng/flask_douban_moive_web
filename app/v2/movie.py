@@ -6,7 +6,7 @@ from sqlalchemy.sql import func
 
 from app.const import MovieCinemaStatus, RatingType
 from app.extensions import cache, sql_db
-from app.sql_models import Country, Genre, Celebrity
+from app.sql_models import Celebrity, Country, Genre
 from app.sql_models import Movie as MovieModel
 from app.sql_models import Rating, User, rating_likes
 from app.utils.auth_decorator import auth, permission_required
