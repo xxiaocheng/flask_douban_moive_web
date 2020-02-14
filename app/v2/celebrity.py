@@ -69,7 +69,7 @@ class Celebrities(Resource):
             aka_en_list=args.aka_en,
         )
         if not celebrity:
-            return error(ErrorCode.CELEBRITY_ALREADY_EXISTS, 401)
+            return error(ErrorCode.CELEBRITY_ALREADY_EXISTS, 403)
         else:
             sql_db.session.add(celebrity)
             sql_db.session.commit()

@@ -355,7 +355,7 @@ class UserEmail(Resource):
         if not this_user:
             return error(ErrorCode.USER_NOT_FOUND, 404)
         if not this_user.validate_password(args.password):
-            return error(ErrorCode.PASSWORD_VALIDATE_ERROR, 401)
+            return error(ErrorCode.PASSWORD_VALIDATE_ERROR, 403)
         if this_user.email_confirmed:
             return error(ErrorCode.EMAIL_ALREADY_CONFIRMED, 403)
         s = test_limit_of_send_email(g.current_user, AccountOperations.RESET_PASSWORD)
