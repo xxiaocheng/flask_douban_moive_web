@@ -688,8 +688,8 @@ class Celebrity(SearchableMixin, MyBaseModel):
             imdb_id=imdb_id,
             born_place=born_place,
             name_en=name_en,
-            aka_list=" ".join(aka_list),
-            aka_en_list=" ".join(aka_en_list),
+            aka_list="/".join(aka_list),
+            aka_en_list="/".join(aka_en_list),
         )
         return celebrity
 
@@ -878,7 +878,7 @@ class Movie(SearchableMixin, MyBaseModel):
             episodes_count=episodes_count,
             current_season=current_season,
             cinema_status=cinema_status,
-            aka_list=" ".join(aka_list),
+            aka_list="/".join(aka_list),
         )
         for genre_name in genres_name:
             genre_obj = Genre.create_one(genre_name)

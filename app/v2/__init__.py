@@ -25,6 +25,7 @@ from app.v2.user import (
     UserRole,
     Users,
 )
+from app.v2.celebrity import Celebrity, Celebrities, CelebrityMovie
 
 
 api_bp = Blueprint("api", __name__, url_prefix="/api/v1")
@@ -41,6 +42,7 @@ api.add_resource(ExistTest, "/user/test/<username_or_email>", endpoint="ExistTes
 api.add_resource(UserEmail, "/user/email", endpoint="UserEmail")
 api.add_resource(UserPassword, "/user/password", endpoint="UserPassword")
 api.add_resource(EmailToken, "/user/email/token/<operation>", endpoint="EmailToken")
+
 
 api.add_resource(
     CinemaMovie, "/movie/cinema/<coming_or_showing>", endpoint="CinemaMovie"
@@ -60,3 +62,10 @@ api.add_resource(
 )
 api.add_resource(FollowFeed, "/movie/feed", endpoint="FollowFeed")
 api.add_resource(Movies, "/movie", endpoint="Movies")
+
+
+api.add_resource(Celebrity, "/celebrity/<celebrity_hash_id>", endpoint="Celebrity")
+api.add_resource(Celebrities, "/celebrity", endpoint="Celebrities")
+api.add_resource(
+    CelebrityMovie, "/celebrity/<celebrity_hash_id>/movie", endpoint="CelebrityMovie"
+)
