@@ -36,7 +36,6 @@ hashids = "*"
 pre-commit = "*"
 pandas = "*"
 ipykernel = "*"
-flask-avatars = "*"
 
 [requires]
 python_version = "3.6"
