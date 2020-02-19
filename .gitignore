@@ -120,7 +120,7 @@ venv.bak/
 data/
 .VSCodeCounter
 app/recommenders
-./import_data_to_mysql/
+import_data_to_mysql/
 import_data_to_mysql/celebrity.json
 import_data_to_mysql/movie.json
 import_data_to_mysql/tag.json
