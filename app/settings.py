@@ -20,6 +20,8 @@ class BaseConfig(object):
         host=os.getenv("FALSK_REDIS_REDIS_HOST", "localhost")
     )
 
+    AREA_DATA_PATH = os.path.join(basedir, "app")
+
     # upload dir
 
     ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "cxxlxx0@gmail.com")
@@ -63,7 +65,7 @@ class DevelopmentConfig(BaseConfig):
     ADMIN_EMAIL = "cxxlxx0@gmail.com"
 
     # SQLALCHEMY DATABASE SETTINGS
-    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://{username}:{password}@{host}:{port}/{database}?charset=utf8mb4".format(
+    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://{username}:{password}@{host}:{port}/{database}_dev?charset=utf8mb4".format(
         username=os.getenv("MYSQL_USERNAME", "root"),
         password=os.getenv("MYSQL_PASSWORD", "123456"),
         host=os.getenv("MYSQL_HOST", "127.0.0.1"),
@@ -78,8 +80,12 @@ class TestingConfig(BaseConfig):
     ADMIN_EMAIL = "cxxlxx0@gmail.com"
 
     # SQLALCHEMY DATABASE SETTINGS
-    SQLALCHEMY_DATABASE_URI = (
-        "mysql+pymysql://root:4399@127.0.0.1:3306/movies_recommend_system_test"
+    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://{username}:{password}@{host}:{port}/{database}_test?charset=utf8mb4".format(
+        username=os.getenv("MYSQL_USERNAME", "root"),
+        password=os.getenv("MYSQL_PASSWORD", "123456"),
+        host=os.getenv("MYSQL_HOST", "127.0.0.1"),
+        port=os.getenv("MYSQL_PORT", "3306"),
+        database=os.getenv("MYSQL_DATABASE", "movies_recommend_system"),
     )
 
 
@@ -87,8 +93,12 @@ class ProductionConfig(BaseConfig):
     ADMIN_EMAIL = "cxxlxx0@gmail.com"
 
     # SQLALCHEMY DATABASE SETTINGS
-    SQLALCHEMY_DATABASE_URI = (
-        "mysql+pymysql://root:4399@127.0.0.1:3306/movies_recommend_system"
+    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://{username}:{password}@{host}:{port}/{database}?charset=utf8mb4".format(
+        username=os.getenv("MYSQL_USERNAME", "root"),
+        password=os.getenv("MYSQL_PASSWORD", "123456"),
+        host=os.getenv("MYSQL_HOST", "127.0.0.1"),
+        port=os.getenv("MYSQL_PORT", "3306"),
+        database=os.getenv("MYSQL_DATABASE", "movies_recommend_system"),
     )
 
 

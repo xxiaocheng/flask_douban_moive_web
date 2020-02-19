@@ -13,7 +13,7 @@ from app.v2.responses import (
     get_item_pagination,
     get_pagination_resource_fields,
     ok,
-    rating_with_movie_resource_fields,
+    rating_with_movie_summary_resource_fields,
 )
 
 
@@ -98,6 +98,9 @@ class ReportedRating(Resource):
         return ok(
             "ok",
             data=marshal(
-                p, get_pagination_resource_fields(rating_with_movie_resource_fields)
+                p,
+                get_pagination_resource_fields(
+                    rating_with_movie_summary_resource_fields
+                ),
             ),
         )

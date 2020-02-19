@@ -10,7 +10,7 @@ from app.v2.responses import country_resource_fields, error, genre_resource_fiel
 
 class Genre(Resource):
     @auth.login_required
-    @cache.cached(timeout=60, query_string=True)
+    @cache.cached(timeout=60 * 3, query_string=True)
     def get(self):
         genres = GenreModel.query.all()
         return ok("ok", data=marshal(genres, genre_resource_fields))
@@ -18,7 +18,7 @@ class Genre(Resource):
 
 class Country(Resource):
     @auth.login_required
-    @cache.cached(timeout=60, query_string=True)
+    @cache.cached(timeout=60 * 3, query_string=True)
     def get(self):
         countries = CountryModel.query.all()
         return ok("ok", data=marshal(countries, country_resource_fields))
@@ -26,7 +26,7 @@ class Country(Resource):
 
 class Year(Resource):
     @auth.login_required
-    @cache.cached(timeout=60, query_string=True)
+    @cache.cached(timeout=60 * 3, query_string=True)
     def get(self):
         years = (
             MovieModel.query.with_entities(MovieModel.year)

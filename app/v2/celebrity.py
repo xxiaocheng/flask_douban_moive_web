@@ -1,9 +1,9 @@
 from flask_restful import Resource, inputs, marshal, reqparse
-
+from werkzeug.datastructures import FileStorage
 from app.const import GenderType
 from app.extensions import sql_db
-from app.sql_models import Celebrity as CelebrityModel
-from app.sql_models import Movie
+from app.sql_models import Celebrity as CelebrityModel, Image, Movie
+from app.extensions import cache
 from app.utils.auth_decorator import auth, permission_required
 from app.utils.hashid import decode_str_to_id
 from app.v2.responses import (
@@ -19,6 +19,7 @@ from app.v2.responses import (
 
 class Celebrity(Resource):
     @auth.login_required
+    @cache.cached(timeout=60 * 60 * 24, query_string=True)
     def get(self, celebrity_hash_id):
         celebrity = CelebrityModel.query.get(decode_str_to_id(celebrity_hash_id))
         if not celebrity:
@@ -41,8 +42,10 @@ class Celebrities(Resource):
     @permission_required("UPLOAD")
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument("douban_id", type=int, location="form")
-        parser.add_argument("avatar_url_last", required=True, type=str, location="form")
+        parser.add_argument(
+            "douban_id", type=inputs.regex("^[0-9]{0,10}$"), location="form"
+        )
+        parser.add_argument("image", required=True, type=FileStorage, location="files")
         parser.add_argument("name", required=True, location="form")
         parser.add_argument(
             "gender", required=True, choices=["male", "female"], location="form"
@@ -60,10 +63,11 @@ class Celebrities(Resource):
             args.gender = GenderType.MALE
         else:
             args.gender = GenderType.FEMALE
+        image = Image.create_one(args.image)
         celebrity = CelebrityModel.create_one(
             args.name,
             args.gender,
-            avatar_url_last=args.avatar_url_last,
+            image=image,
             douban_id=args.douban_id,
             born_place=args.born_place,
             name_en=args.name_en,
@@ -80,6 +84,7 @@ class Celebrities(Resource):
 
 class CelebrityMovie(Resource):
     @auth.login_required
+    @cache.cached(60 * 60, query_string=True)
     def get(self, celebrity_hash_id):
         this_celebrity = CelebrityModel.query.get(decode_str_to_id(celebrity_hash_id))
         if not this_celebrity:

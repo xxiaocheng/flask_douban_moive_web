@@ -1,10 +1,11 @@
-from flask import g
+from flask import g, current_app
 from flask_restful import Resource, inputs, marshal, reqparse
+from werkzeug.datastructures import FileStorage
 
 from app.const import AccountOperations
 from app.extensions import sql_db
 from app.sql_models import Role
-from app.sql_models import User as UserModel
+from app.sql_models import User as UserModel, ChinaArea as ChinaAreaModel, Image
 from app.tasks.email import (
     send_change_email_email,
     send_confirm_email,
@@ -137,8 +138,9 @@ class User(Resource):
 
     @auth.login_required
     def delete(self, username):
-        if username != g.current_user.username:
-            return error(ErrorCode.FORBIDDEN, 403)
+        current_app.logger.info(
+            "delete account of {username}".format(username=username)
+        )
         parser = reqparse.RequestParser(trim=True)
         parser.add_argument(
             "password",
@@ -156,8 +158,9 @@ class User(Resource):
 
     @auth.login_required
     def patch(self, username):
-        if username != g.current_user.username:
-            return error(ErrorCode.FORBIDDEN, 403)
+        current_app.logger.info(
+            "modify profile of {username}".format(username=username)
+        )
         parser = reqparse.RequestParser(trim=True)
         parser.add_argument(
             "username",
@@ -169,25 +172,21 @@ class User(Resource):
         parser.add_argument(
             "signature", type=inputs.regex("^.{1,64}$"), location="form"
         )
-        parser.add_argument("avatar_url_last", type=str, location="form")
+        parser.add_argument("avatar_file", type=FileStorage, location="files")
         args = parser.parse_args()
         user = g.current_user
-        if args.username:
+        if args.username and args.username != g.current_user.username:
             if not user.change_username(args.username):
                 return error(ErrorCode.USER_ALREADY_EXISTS, 403)
         if args.city_id:
             user.city_id = args.city_id
         if args.signature:
             user.signature = args.signature
-        if args.avatar_url_last:
-            user.avatar_url_last = args.avatar_url_last
+        if args.avatar_file:
+            avatar = Image.create_one(args.avatar_file)
+            user.avatar = avatar
         sql_db.session.commit()
-        return ok(
-            "ok",
-            username=user.username,
-            city_name=user.city.name,
-            signature=user.signature,
-        )
+        return ok("ok", username=user.username, signature=user.signature)
 
 
 class Follow(Resource):
@@ -394,13 +393,11 @@ class UserPassword(Resource):
         )
         args = parser.parse_args()
         current_user = g.current_user
-        print(current_user.username)
         if current_user.validate_password(args.old_password):
             current_user.change_password(args.old_password)
             sql_db.session.commit()
             return ok("密码修改成功")
         else:
-            print()
             return error(ErrorCode.PASSWORD_VALIDATE_ERROR, 403)
 
     def put(self):
@@ -467,8 +464,14 @@ class EmailToken(Resource):
             if validate_email_confirm_token(
                 args.token, AccountOperations.CHANGE_EMAIL, new_email=args.new_email
             ):
-                return ok("您的邮箱已修改")
+                return ok("您的邮箱已修改, 请到新邮箱查看确认邮件！")
             else:
                 return error(ErrorCode.INVALID_TOKEN, 403)
         else:
             return error(ErrorCode.INVALID_PARAMS, 403)
+
+
+class ChinaArea(Resource):
+    @auth.login_required
+    def get(self):
+        return ChinaAreaModel.get_all_area_date()

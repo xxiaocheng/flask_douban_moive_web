@@ -6,7 +6,7 @@ COPY . /app
 
 RUN apt-get update && apt-get install -y python3-pip && \
     pip3 install pipenv && \
-    pipenv install --system
+    pipenv install --system && chmod +x boot.sh
 
 # EXPOSE 5000
 

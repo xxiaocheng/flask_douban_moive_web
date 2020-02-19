@@ -29,9 +29,12 @@ from app.v2.user import (
     UserPassword,
     UserRole,
     Users,
+    ChinaArea,
 )
+from app.v2.photo import Photo
 
-api_bp = Blueprint("api", __name__, url_prefix="/api/v1")
+
+api_bp = Blueprint("api", __name__, url_prefix="/api/v2")
 
 api = Api(api_bp)
 
@@ -40,15 +43,18 @@ api.add_resource(Users, "/users", endpoint="Users")
 api.add_resource(User, "/users/<username>", endpoint="User")
 api.add_resource(Follow, "/users/<username>/<follower_or_following>", endpoint="Follow")
 api.add_resource(UserRole, "/users/<username>/role", endpoint="UserRole")
-api.add_resource(Roles, "/roles", endpoint="Roles")
+api.add_resource(Roles, "/role", endpoint="Roles")
 api.add_resource(ExistTest, "/user/test/<username_or_email>", endpoint="ExistTest")
 api.add_resource(UserEmail, "/user/email", endpoint="UserEmail")
 api.add_resource(UserPassword, "/user/password", endpoint="UserPassword")
 api.add_resource(EmailToken, "/user/email/token/<operation>", endpoint="EmailToken")
+api.add_resource(ChinaArea, "/area-code", endpoint="ChinaArea")
 
 
 api.add_resource(
-    CinemaMovie, "/movie/cinema/<coming_or_showing>", endpoint="CinemaMovie"
+    CinemaMovie,
+    "/movie/cinema/<any(coming, showing):coming_or_showing>",
+    endpoint="CinemaMovie",
 )
 api.add_resource(MovieRecommend, "/movie/recommend", endpoint="MovieRecommend")
 api.add_resource(
@@ -94,3 +100,5 @@ api.add_resource(
     "/notification/<any(friendship,like):type_name>",
     endpoint="Notification",
 )
+
+api.add_resource(Photo, "/photo/<image_hash_id>", endpoint="Photo")

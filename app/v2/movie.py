@@ -3,10 +3,11 @@ from flask_restful import Resource, inputs, marshal, reqparse
 from flask_sqlalchemy import Pagination
 from sqlalchemy import desc
 from sqlalchemy.sql import func
+from werkzeug.datastructures import FileStorage
 
 from app.const import MovieCinemaStatus, RatingType
 from app.extensions import cache, sql_db
-from app.sql_models import Celebrity, Country, Genre
+from app.sql_models import Celebrity, Country, Genre, Image
 from app.sql_models import Movie as MovieModel
 from app.sql_models import Rating, User, rating_likes
 from app.utils.auth_decorator import auth, permission_required
@@ -63,7 +64,6 @@ class CinemaMovie(Resource):
 
 class MovieRecommend(Resource):
     @auth.login_required
-    @cache.cached(timeout=10, query_string=True)
     def get(self):
         parser = reqparse.RequestParser()
         parser.add_argument("page", default=1, type=inputs.positive, location="args")
@@ -85,7 +85,7 @@ class MovieRecommend(Resource):
 
 class LeaderBoard(Resource):
     @auth.login_required
-    @cache.cached(timeout=30, query_string=True)
+    @cache.cached(timeout=60, query_string=True)
     def get(self, time_range):
         if time_range not in ["week", "month"]:
             return error(ErrorCode.INVALID_PARAMS, 400)
@@ -113,6 +113,7 @@ class LeaderBoard(Resource):
 
 class MovieGenresRank(Resource):
     @auth.login_required
+    @cache.cached(60, query_string=True)
     def get(self, genre_hash_id):
         parser = reqparse.RequestParser()
         parser.add_argument("page", default=1, type=inputs.positive, location="args")
@@ -155,6 +156,7 @@ class MovieGenresRank(Resource):
 
 class UserMovie(Resource):
     @auth.login_required
+    @cache.cached(10, query_string=True)
     def get(self, username):
         this_user = User.query.filter_by(username=username).first()
         if not this_user:
@@ -181,13 +183,11 @@ class UserMovie(Resource):
                 rating_paginate = this_user.ratings.filter(
                     Rating.category == RatingType.COLLECT
                 ).paginate(args.page, args.per_page)
-            movies = [rating.movie for rating in rating_paginate.items]
-            rating_paginate.items = movies
             p = get_item_pagination(rating_paginate, "api.UserMovie", username=username)
             return ok(
                 "ok",
                 data=marshal(
-                    p, get_pagination_resource_fields(movie_summary_resource_fields)
+                    p, get_pagination_resource_fields(rating_with_movie_resource_fields)
                 ),
             )
         else:
@@ -200,15 +200,6 @@ class UserMovie(Resource):
             collect_rating_paginate = this_user.ratings.filter(
                 Rating.category == RatingType.COLLECT
             ).paginate(args.page, args.per_page)
-            wish_rating_paginate.items = [
-                rating.movie for rating in wish_rating_paginate.items
-            ]
-            do_rating_paginate.items = [
-                rating.movie for rating in do_rating_paginate.items
-            ]
-            collect_rating_paginate.items = [
-                rating.movie for rating in collect_rating_paginate.items
-            ]
             wish_p = get_item_pagination(
                 wish_rating_paginate, "api.UserMovie", username=username
             )
@@ -221,14 +212,15 @@ class UserMovie(Resource):
             data = {
                 "wish_movies": marshal(
                     wish_p,
-                    get_pagination_resource_fields(movie_summary_resource_fields),
+                    get_pagination_resource_fields(rating_with_movie_resource_fields),
                 ),
                 "do_movies": marshal(
-                    do_p, get_pagination_resource_fields(movie_summary_resource_fields)
+                    do_p,
+                    get_pagination_resource_fields(rating_with_movie_resource_fields),
                 ),
                 "collect_movies": marshal(
                     collect_p,
-                    get_pagination_resource_fields(movie_summary_resource_fields),
+                    get_pagination_resource_fields(rating_with_movie_resource_fields),
                 ),
             }
             return ok("ok", data=data)
@@ -236,29 +228,31 @@ class UserMovie(Resource):
 
 class ChoiceMovie(Resource):
     @auth.login_required
+    @cache.cached(60, query_string=True)
     def get(self):
         parser = reqparse.RequestParser()
         parser.add_argument(
-            "subtype", default=None, type=str, choices=["tv", "movie"], location="args"
+            "subtype",
+            default=None,
+            type=str,
+            choices=["tv", "movie", ""],
+            location="args",
         )
-        parser.add_argument("genre_hash_id", default=None, type=str, location="args")
-        parser.add_argument("country_hash_id", default=None, type=str, location="args")
-        parser.add_argument("year", default=None, type=inputs.positive, location="args")
-
+        parser.add_argument("genre_name", default=None, type=str, location="args")
+        parser.add_argument("country_name", default=None, type=str, location="args")
+        parser.add_argument("year", default=None, type=str, location="args")
         parser.add_argument("page", default=1, type=inputs.positive, location="args")
         parser.add_argument(
             "per_page", default=20, type=inputs.positive, location="args"
         )
         args = parser.parse_args()
         query = MovieModel.query
-        if args.genre_hash_id:
-            genre_id = decode_str_to_id(args.genre_hash_id)
-            genre = Genre.query.get(genre_id)
+        if args.genre_name:
+            genre = Genre.query.filter_by(genre_name=args.genre_name).first()
             if genre:
                 query = query.filter(MovieModel.genres.contains(genre))
-        if args.country_hash_id:
-            country_id = decode_str_to_id(args.country_hash_id)
-            country = Country.query.get(country_id)
+        if args.country_name:
+            country = Country.query.filter_by(country_name=args.country_name).first()
             if country:
                 query = query.filter(MovieModel.countries.contains(country))
         if args.subtype:
@@ -287,8 +281,8 @@ class ChoiceMovie(Resource):
             pagination,
             "api.ChoiceMovie",
             subtype=args.subtype,
-            genre_hash_id=args.genre_hash_id,
-            country_hash_id=args.country_hash_id,
+            genre_hash_id=args.genre_name,
+            country_hash_id=args.country_name,
             year=args.year,
         )
         return ok(
@@ -324,8 +318,8 @@ class MovieUserRating(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument(
             "interest",
-            type=str,
-            choices=["wish", "do", "collect"],
+            type=int,
+            choices=[RatingType.COLLECT, RatingType.WISH, RatingType.DO],
             required=True,
             location="form",
         )
@@ -336,26 +330,26 @@ class MovieUserRating(Resource):
             default=0,
             location="form",
         )
-        parser.add_argument("tags", type=inputs.regex("^.{1,512}$"), location="form")
-        parser.add_argument("comment", type=inputs.regex("^.{1,128}$"), location="form")
+        parser.add_argument("tags", type=inputs.regex("^.{0,512}$"), location="form")
+        parser.add_argument("comment", type=inputs.regex("^.{0,128}$"), location="form")
         args = parser.parse_args()
         this_movie = MovieModel.query.get(decode_str_to_id(movie_hash_id))
         this_user = g.current_user
         if not this_movie:
             return error(ErrorCode.MOVIE_NOT_FOUND, 404)
         f = False
-        if args.interest == "wish":
+        if args.interest == RatingType.WISH:
             f = this_user.wish_movie(
                 this_movie, comment=args.comment, tags_name=args.tags.split(" ")
             )
-        if args.interest == "do":
+        if args.interest == RatingType.DO:
             f = this_user.do_movie(
                 this_movie,
                 score=args.score,
                 comment=args.comment,
                 tags_name=args.tags.split(" "),
             )
-        if args.interest == "collect":
+        if args.interest == RatingType.COLLECT:
             f = this_user.collect_movie(
                 this_movie,
                 score=args.score,
@@ -491,13 +485,15 @@ class Movies(Resource):
     @permission_required("UPLOAD")
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument("douban_id", default="", type=str, location="form")
+        parser.add_argument(
+            "douban_id", type=inputs.regex("^[0-9]{0,10}$"), location="form"
+        )
         parser.add_argument("title", type=str, required=True, location="form")
         parser.add_argument(
             "subtype", choices=["movie", "tv"], required=True, location="form"
         )
         parser.add_argument("year", type=int, required=True, location="form")
-        parser.add_argument("image_url_last", required=True, type=str, location="form")
+        parser.add_argument("image", required=True, type=FileStorage, location="files")
         parser.add_argument("countries", required=True, type=str, location="form")
         parser.add_argument("genres_name", required=True, type=str, location="form")
         parser.add_argument("original_title", type=str, location="form")
@@ -545,10 +541,11 @@ class Movies(Resource):
                 ]
             )
         )
+        image = Image.create_one(args.image)
         movie = MovieModel.create_one(
             title=args.title,
             subtype=args.subtype,
-            image_url_last=args.image_url_last,
+            image=image,
             year=args.year,
             douban_id=args.douban_id,
             original_title=args.original_title,

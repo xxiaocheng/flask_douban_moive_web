@@ -1,18 +1,22 @@
 version: "3"
 services:
   web:
+    container_name: web
     build: ./
     depends_on:
       - redis
-      - mongo
-    volumes:
-      - "./images:/app/images"
+      - mysql
+      - elasticsearch
     env_file: .env
     # ports:
     #   - "5000:5000"
     expose:
       - "5000"
+    volumes:
+    - ".data/web:/app/logs"
     command: gunicorn -w 1 -b :5000 wsgi:app
+
+    restart: always
 
   nginx:
     container_name: nginx
@@ -26,6 +30,7 @@ services:
       - web
 
   redis:
+    container_name: redis
     image: redis
     # ports:
     #   - "6379:6379"
@@ -33,19 +38,43 @@ services:
       - "6379"
     volumes:
       - "./data/redis:/data"
-
     restart: always
     command: redis-server --appendonly yes
 
-  mongo:
-    image: mongo
+  mysql:
+#    image: "docker.io/mysql:5"
+    container_name: mysql
+    image: mariadb
     environment:
-      - MONGO_DATA_DIR=/data/db
-      - MONGO_LOG_DIR=/dev/null
-    # ports:
-    #   - "27017:27017"
+      MYSQL_ROOT_PASSWORD: 4399
+      MYSQL_USER: test
+      MYSQL_PASS: 4399
+      MYSQL_DATABASE: movies_recommend_system
     expose:
-      - "27017"
+      - "3306"
+    restart: always
     volumes:
-      - "./data/mongodb:/data/db"
-    command: mongod --smallfiles --logpath=/dev/null
+      - "./data/mysql:/var/lib/mysql"
+#      - "./mysql/my.cnf:/etc/my.cnf"
+    command: ['mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci']
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.5.2
+    container_name: web_elasticsearch
+    environment:
+      - discovery.type=single-node
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - "./data/elasticsearch:/usr/share/elasticsearch/data"
+    expose:
+      - "9200"
+      - "9300"
+    restart: always

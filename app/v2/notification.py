@@ -42,7 +42,7 @@ class Notification(Resource):
                 g.current_user.notifications_received.filter_by(
                     category=NotificationType.FOLLOW
                 )
-                .order_by(NotificationModel.category)
+                .order_by(NotificationModel.created_at.desc())
                 .paginate(args.page, args.per_page)
             )
         elif type_name == "like":
@@ -50,7 +50,7 @@ class Notification(Resource):
                 g.current_user.notifications_received.filter_by(
                     category=NotificationType.RATING_ACTION
                 )
-                .order_by(NotificationModel.category)
+                .order_by(NotificationModel.created_at.desc())
                 .paginate(args.page, args.per_page)
             )
         else:
