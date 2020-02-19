@@ -76,7 +76,7 @@ def ok(message, data=None, http_status_code=200, **kwargs):
     :param kwargs: other data for return
     :return:
     """
-    return {"msg": message, "data": data, **kwargs}, http_status_code
+    return {"message": message, "data": data, **kwargs}, http_status_code
 
 
 def error(error_code, http_status_code, **kwargs):
@@ -88,7 +88,7 @@ def error(error_code, http_status_code, **kwargs):
     :return:
     """
     return (
-        {"msg": ERROR_MSG_MAP[error_code], "error_code": error_code, **kwargs},
+        {"message": ERROR_MSG_MAP[error_code], "error_code": error_code, **kwargs},
         http_status_code,
     )
 
@@ -212,15 +212,18 @@ class SplitToList(fields.Raw):
         return value.split("/")
 
 
+class SplitToListWithSpace(fields.Raw):
+    def format(self, value):
+        return [tag.tag_name for tag in value if value]
+
+
 rating_without_user_resource_fields = {
     "id": fields.String(attribute=lambda x: encode_id_to_str(x.id)),
     "category": fields.Integer,
     "comment": fields.String,
     "score": fields.Integer,
     "when": fields.DateTime(dt_format="iso8601", attribute="created_at"),
-    "tags": fields.String(
-        attribute=lambda x: [tag.tag_name for tag in x.tags if x.tags]
-    ),
+    "tags": SplitToListWithSpace,
 }
 
 movie_resource_fields = {
@@ -230,6 +233,7 @@ movie_resource_fields = {
     "subtype": fields.String,
     "image_url": fields.String,
     "score": fields.Float,
+    "rating_count": fields.Integer(attribute=lambda x: x.ratings.count()),
     "douban_id": fields.String,
     "wish_by_count": fields.Integer(
         attribute=lambda x: x.user_wish_rating_query.count()
@@ -291,6 +295,9 @@ rating_with_movie_resource_fields = {
     "category": fields.Integer,
     "comment": fields.String,
     "score": fields.Integer,
+    "tags": fields.List(
+        fields.String, attribute=lambda x: [tag.tag_name for tag in x.tags]
+    ),
     "when": fields.DateTime(dt_format="iso8601", attribute="created_at"),
     "username": fields.String(attribute=lambda x: x.user.username),
     "user_avatar": fields.String(attribute=lambda x: x.user.avatar_thumb),
@@ -304,5 +311,24 @@ notification_resource_fields = {
     "is_read": fields.Boolean,
     "category": fields.Integer,
     "information_text": fields.String,
-    "rating": fields.Nested(rating_resource_fields, allow_null=True),
+    "movie": fields.Nested(
+        movie_summary_resource_fields,
+        allow_null=True,
+        attribute=lambda x: x.rating.movie if x.rating else None,
+    ),
+    "when": fields.DateTime(dt_format="iso8601", attribute="created_at"),
+}
+
+rating_with_movie_summary_resource_fields = {
+    "id": fields.String(attribute=lambda x: encode_id_to_str(x.id)),
+    "category": fields.Integer,
+    "comment": fields.String,
+    "score": fields.Integer,
+    "tags": fields.List(
+        fields.String, attribute=lambda x: [tag.tag_name for tag in x.tags]
+    ),
+    "when": fields.DateTime(dt_format="iso8601", attribute="created_at"),
+    "username": fields.String(attribute=lambda x: x.user.username),
+    "user_avatar": fields.String(attribute=lambda x: x.user.avatar_thumb),
+    "movie": fields.Nested(movie_summary_resource_fields),
 }

@@ -2,14 +2,16 @@ import hashlib
 from datetime import datetime
 import os
 import json
+import base64
 
 from tqdm import tqdm
-from flask import current_app, g
+from flask import current_app, g, url_for
+from flask_avatars import Identicon
 from itsdangerous import BadSignature, SignatureExpired
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from sqlalchemy import or_, UniqueConstraint
 from sqlalchemy.sql import func
-from sqlalchemy.dialects.mysql import TINYINT
+from sqlalchemy.dialects.mysql import TINYINT, MEDIUMBLOB
 from werkzeug.security import check_password_hash, generate_password_hash
 from elasticsearch.exceptions import NotFoundError
 
@@ -24,8 +26,8 @@ from app.const import (
 from app.extensions import sql_db as db
 from app.extensions import cache
 from app.es_search import add_to_index, remove_from_index, query_index
+from app.utils.hashid import encode_id_to_str
 from app.utils.redis_utils import add_rating_to_rank_redis
-from flask import current_app
 
 
 class SearchableMixin:
@@ -223,7 +225,7 @@ class ChinaArea(db.Model):
         )
         parent = []
         for p in res:
-            t = {"id": p[0], "code": p[1], "name": p[2]}
+            t = {"id": p[0], "code": p[1], "name": p[2], "label": p[2], "value": p[0]}
             two_level_children = []
             level_two_res = list(
                 db.session.execute(
@@ -232,7 +234,13 @@ class ChinaArea(db.Model):
                 )
             )
             for level_two in level_two_res:
-                tt = {"id": level_two[0], "code": level_two[1], "name": level_two[2]}
+                tt = {
+                    "id": level_two[0],
+                    "code": level_two[1],
+                    "name": level_two[2],
+                    "label": level_two[2],
+                    "value": level_two[0],
+                }
                 three_leve_children = []
                 level_three_res = list(
                     db.session.execute(
@@ -245,6 +253,8 @@ class ChinaArea(db.Model):
                         "id": level_three[0],
                         "code": level_three[1],
                         "name": level_three[2],
+                        "label": level_three[2],
+                        "value": level_three[0],
                     }
                     three_leve_children.append(ttt)
                 tt["children"] = three_leve_children
@@ -252,6 +262,18 @@ class ChinaArea(db.Model):
             t["children"] = two_level_children
             parent.append(t)
         return parent
+
+
+class Image(MyBaseModel):
+    __tablename__ = "images"
+    image = db.Column(MEDIUMBLOB)
+    ext = db.Column(db.String(8), default="png")
+
+    @staticmethod
+    def create_one(raw_file, ext="png"):
+        img = base64.b64encode(raw_file.read())
+        image = Image(ext=ext, image=img)
+        return image
 
 
 class User(SearchableMixin, MyBaseModel):
@@ -266,7 +288,8 @@ class User(SearchableMixin, MyBaseModel):
     password_hash = db.Column(db.String(128), nullable=False)
     token_salt = db.Column(db.Integer, default=0, nullable=False)
     last_login_time = db.Column(db.DateTime, default=datetime.utcnow)
-    avatar_url_last = db.Column(db.String(128))
+    avatar_image_id = db.Column(db.Integer, db.ForeignKey("images.id"))
+    avatar = db.relationship("Image", backref="user", lazy=True)
     email_confirmed = db.Column(db.Boolean(), default=False, nullable=False)
     signature = db.Column(db.Text)
     city_id = db.Column(db.Integer, db.ForeignKey("china_area_code.id"))
@@ -621,24 +644,28 @@ class User(SearchableMixin, MyBaseModel):
         """
         thumb avatar
         """
-        if not self.avatar_url_last:
+        if not self.avatar:
             return self._gen_email_hashgravatar(100)
         else:
-            url = current_app.config["CHEVERETO_BASE_URL"]
-            file_name = self.avatar_url_last.split(".")[0]
-            file_ext = self.avatar_url_last.split(".")[1]
-            return url + file_name + ".th." + file_ext
+            return url_for(
+                "api.Photo",
+                image_hash_id=encode_id_to_str(self.avatar_image_id),
+                _external=True,
+            )
 
     @property
     def avatar_image(self):
         """
         avatar image
         """
-        if not self.avatar_url_last:
+        if not self.avatar:
             return self._gen_email_hashgravatar(1000)
         else:
-            url = current_app.config["CHEVERETO_BASE_URL"]
-            return url + self.avatar_url_last
+            return url_for(
+                "api.Photo",
+                image_hash_id=encode_id_to_str(self.avatar_image_id),
+                _external=True,
+            )
 
     @property
     def followers_count(self):
@@ -661,7 +688,8 @@ class Celebrity(SearchableMixin, MyBaseModel):
     imdb_id = db.Column(db.String(16), nullable=True, unique=True)
     name = db.Column(db.String(128), nullable=False)
     gender = db.Column(TINYINT(1), default=GenderType.MALE, nullable=False)
-    avatar_url_last = db.Column(db.String(128), nullable=False)
+    image_id = db.Column(db.INTEGER, db.ForeignKey("images.id"))
+    image = db.relationship("Image", backref="celebrity", lazy=True)
     born_place = db.Column(db.String(32))
     name_en = db.Column(db.String(32))
     aka_list = db.Column(db.Text)
@@ -671,7 +699,7 @@ class Celebrity(SearchableMixin, MyBaseModel):
     def create_one(
         name,
         gender,
-        avatar_url_last,
+        image,
         douban_id=None,
         imdb_id=None,
         born_place=None,
@@ -689,7 +717,7 @@ class Celebrity(SearchableMixin, MyBaseModel):
         celebrity = Celebrity(
             name=name,
             gender=gender,
-            avatar_url_last=avatar_url_last,
+            image=image,
             douban_id=douban_id,
             imdb_id=imdb_id,
             born_place=born_place,
@@ -704,8 +732,9 @@ class Celebrity(SearchableMixin, MyBaseModel):
         """
         :return: avatar image url
         """
-        url = current_app.config["CHEVERETO_BASE_URL"]
-        return url + self.avatar_url_last
+        return url_for(
+            "api.Photo", image_hash_id=encode_id_to_str(self.image_id), _external=True
+        )
 
 
 class Genre(MyBaseModel):
@@ -807,7 +836,8 @@ class Movie(SearchableMixin, MyBaseModel):
     original_title = db.Column(db.String(64))
     subtype = db.Column(db.String(10), nullable=False)
     year = db.Column(db.Integer, nullable=False)
-    image_url_last = db.Column(db.String(128), nullable=False)
+    image_id = db.Column(db.Integer, db.ForeignKey("images.id"), nullable=False)
+    image = db.relationship("Image", backref="movie", lazy=True)
     seasons_count = db.Column(db.Integer)  # 季数
     episodes_count = db.Column(db.Integer)  # 集数
     current_season = db.Column(db.Integer)  # 当前第几季
@@ -849,7 +879,7 @@ class Movie(SearchableMixin, MyBaseModel):
     def create_one(
         title,
         subtype,
-        image_url_last,
+        image,
         year,
         douban_id=None,
         imdb_id=None,
@@ -874,7 +904,7 @@ class Movie(SearchableMixin, MyBaseModel):
         movie = Movie(
             title=title,
             subtype=subtype,
-            image_url_last=image_url_last,
+            image=image,
             summary=summary,
             douban_id=douban_id,
             imdb_id=imdb_id,
@@ -922,8 +952,9 @@ class Movie(SearchableMixin, MyBaseModel):
 
     @property
     def image_url(self):
-        url = current_app.config["CHEVERETO_BASE_URL"]
-        return url + self.image_url_last
+        return url_for(
+            "api.Photo", image_hash_id=encode_id_to_str(self.image_id), _external=True
+        )
 
     def __repr__(self):
         return "<Movie %r>" % self.title
@@ -1041,8 +1072,9 @@ class Rating(MyBaseModel):
         r.user = user
         r.movie = movie
         for tag_name in tags_name:
-            rating_tag = Tag.create_one(tag_name=tag_name)
-            r.tags.append(rating_tag)
+            if tag_name != "":
+                rating_tag = Tag.create_one(tag_name=tag_name)
+                r.tags.append(rating_tag)
         return r
 
     def like_by(self, user):

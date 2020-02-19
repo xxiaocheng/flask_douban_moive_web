@@ -4,16 +4,17 @@ from flask_sqlalchemy import Pagination
 from app.sql_models import Celebrity, Movie, User
 from app.v2.responses import (
     celebrity_summary_resource_fields,
-    error,
     get_item_pagination,
     get_pagination_resource_fields,
     movie_summary_resource_fields,
     ok,
     user_resource_fields,
 )
+from app.extensions import cache
 
 
 class Search(Resource):
+    @cache.cached(timeout=60, query_string=True)
     def get(self):
         parser = reqparse.RequestParser()
         parser.add_argument(
