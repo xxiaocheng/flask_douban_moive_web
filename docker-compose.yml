@@ -56,7 +56,7 @@ services:
     volumes:
       - "./data/mysql:/var/lib/mysql"
 #      - "./mysql/my.cnf:/etc/my.cnf"
-    command: ['mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci']
+    command: ['mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci', '--max_allowed_packet=1024*1024*16']
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.5.2

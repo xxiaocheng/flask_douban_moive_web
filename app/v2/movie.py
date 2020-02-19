@@ -275,6 +275,7 @@ class ChoiceMovie(Resource):
             .outerjoin(score_stmt, MovieModel.id == score_stmt.c.movie_id)
             .filter(MovieModel.id == movies.c.id)
             .order_by(score_stmt.c.avg_score.desc())
+            .order_by(MovieModel.year.desc())
             .paginate(args.page, args.per_page)
         )
         p = get_item_pagination(
