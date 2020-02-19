@@ -6,7 +6,6 @@ import base64
 
 from tqdm import tqdm
 from flask import current_app, g, url_for
-from flask_avatars import Identicon
 from itsdangerous import BadSignature, SignatureExpired
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from sqlalchemy import or_, UniqueConstraint
