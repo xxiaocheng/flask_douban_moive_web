@@ -12,7 +12,7 @@ from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from celery import Celery
 from elasticsearch import Elasticsearch
 
-from app.extensions import cache, cors, redis_store, sql_db, migrate, avatars
+from app.extensions import cache, cors, redis_store, sql_db, migrate
 from app.settings import config, BaseConfig
 from app.sql_models import ChinaArea
 
@@ -62,7 +62,6 @@ def register_extensions(app):
     redis_store.init_app(app)
     sql_db.init_app(app)
     migrate.init_app(app, db=sql_db)
-    avatars.init_app(app)
 
 
 def register_blueprints(app):
