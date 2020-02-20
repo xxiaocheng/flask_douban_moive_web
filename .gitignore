@@ -117,4 +117,3 @@ venv.bak/
 data/
 .VSCodeCounter
 app/recommenders
-import_data_to_mysql
