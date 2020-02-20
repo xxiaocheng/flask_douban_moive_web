@@ -14,11 +14,18 @@ class BaseConfig(object):
     CACHE_TYPE = "redis"
     CACHE_REDIS_DB = "0"
     CACHE_REDIS_HOST = os.getenv("CACHE_REDIS_HOST", "localhost")
+    CACHE_REDIS_PASSWORD = os.getenv("CACHE_REDIS_PASSWORD")
 
     # flask_redis
-    REDIS_URL = "redis://{host}:6379/0".format(
-        host=os.getenv("FALSK_REDIS_REDIS_HOST", "localhost")
-    )
+    if os.getenv("FALSK_REDIS_REDIS_PASSWORD"):
+        REDIS_URL = "redis://{password}@{host}:6379/0".format(
+            password=os.getenv("FALSK_REDIS_REDIS_PASSWORD"),
+            host=os.getenv("FALSK_REDIS_REDIS_HOST", "localhost"),
+        )
+    else:
+        REDIS_URL = "redis://{host}:6379/0".format(
+            host=os.getenv("FALSK_REDIS_REDIS_HOST", "localhost")
+        )
 
     AREA_DATA_PATH = os.path.join(basedir, "app")
 
@@ -38,15 +45,26 @@ class BaseConfig(object):
     # SQLALCHEMY DATABASE SETTINGS
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    CHEVERETO_BASE_URL = os.getenv(
-        "CHEVERETO_BASE_URL", "http://119.3.163.246:8080/images/"
-    )
-
     # CELERY SETTINGS
-    CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
-    CELERY_RESULT_BACKEND = os.getenv(
-        "CELERY_RESULT_BACKEND", "redis://localhost:6379/0"
-    )
+    if os.getenv("CELERY_BROKER_PASSWORD"):
+        CELERY_BROKER_URL = "redis://{password}@{host}:6379/0".format(
+            password=os.getenv("CELERY_BROKER_PASSWORD"),
+            host=os.getenv("CELERY_BROKER_URL", "localhost"),
+        )
+    else:
+        CELERY_BROKER_URL = "redis://{host}:6379/0".format(
+            host=os.getenv("CELERY_BROKER_URL", "localhost")
+        )
+    if os.getenv("CELERY_RESULT_BACKEND_PASSWORD"):
+        CELERY_RESULT_BACKEND = "redis://{password}@{host}:6379/0".format(
+            password=os.getenv("CELERY_RESULT_BACKEND_PASSWORD"),
+            host=os.getenv("CELERY_RESULT_BACKEND_URL", "localhost"),
+        )
+    else:
+        CELERY_RESULT_BACKEND = "redis://{host}:6379/0".format(
+            host=os.getenv("CELERY_RESULT_BACKEND_URL", "localhost")
+        )
+
     CELERY_TIMEZONE = "Asia/Shanghai"
     CELERYD_CONCURRENCY = os.getenv("CELERYD_CONCURRENCY", 12)
     CELERY_IMPORTS = ("app.tasks.email",)
