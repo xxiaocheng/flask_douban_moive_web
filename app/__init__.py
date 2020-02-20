@@ -15,6 +15,7 @@ from elasticsearch import Elasticsearch
 from app.extensions import cache, cors, redis_store, sql_db, migrate
 from app.settings import config, BaseConfig
 from app.sql_models import ChinaArea
+from app.import_data_to_mysql.script import import_all
 
 
 sentry_sdk.init(
@@ -147,4 +148,7 @@ def register_commands(app):
         click.echo("Initialized database.")
         click.echo("Load China area data.")
         ChinaArea.load_data_from_json()
+        click.echo("Finished.")
+        click.echo("Import movie data to database.")
+        import_all()
         click.echo("Finished.")
