@@ -266,7 +266,7 @@ class ChinaArea(db.Model):
 class Image(MyBaseModel):
     __tablename__ = "images"
     image = db.Column(MEDIUMBLOB)
-    ext = db.Column(db.String(8), default="png")
+    ext = db.Column(db.String(50), default="png")
 
     @staticmethod
     def create_one(raw_file, ext="png"):
@@ -693,6 +693,7 @@ class Celebrity(SearchableMixin, MyBaseModel):
     name_en = db.Column(db.String(32))
     aka_list = db.Column(db.Text)
     aka_en_list = db.Column(db.Text)
+    ext = db.Column(db.String(32))
 
     @staticmethod
     def create_one(
@@ -743,6 +744,7 @@ class Genre(MyBaseModel):
 
     __tablename__ = "genres"
     genre_name = db.Column(db.String(8), nullable=False)
+    ext = db.Column(db.String(32))
 
     @staticmethod
     def create_one(genre_name):
@@ -841,6 +843,7 @@ class Movie(SearchableMixin, MyBaseModel):
     episodes_count = db.Column(db.Integer)  # 集数
     current_season = db.Column(db.Integer)  # 当前第几季
     summary = db.Column(db.Text)
+    ext = db.Column(db.String(32))
     # must be in MovieCinemaStatus
     cinema_status = db.Column(
         db.Integer, default=MovieCinemaStatus.FINISHED, nullable=False
