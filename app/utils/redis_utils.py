@@ -92,3 +92,14 @@ def test_limit_of_send_email(user, operation):
         return ttl_time
     redis_store.set(key, 1, 60)  # 限制60s 发送一次
     return -2
+
+
+def push_task_id_to_redis(key, task_id):
+    redis_store.rpush(key, task_id)
+
+
+def get_task_id_from_redis(key):
+    key_len = redis_store.llen(key)
+    if key_len > 0:
+        return redis_store.lrange(key, key_len - 1, key_len)[-1]
+    return None

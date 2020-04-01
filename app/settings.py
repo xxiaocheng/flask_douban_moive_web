@@ -49,11 +49,11 @@ class BaseConfig(object):
     if os.getenv("CELERY_BROKER_PASSWORD"):
         CELERY_BROKER_URL = "redis://{password}@{host}:6379/0".format(
             password=os.getenv("CELERY_BROKER_PASSWORD"),
-            host=os.getenv("CELERY_BROKER_URL", "localhost"),
+            host=os.getenv("CELERY_BROKER_REDIS_URL", "localhost"),
         )
     else:
         CELERY_BROKER_URL = "redis://{host}:6379/0".format(
-            host=os.getenv("CELERY_BROKER_URL", "localhost")
+            host=os.getenv("CELERY_BROKER_REDIS_URL", "localhost")
         )
     if os.getenv("CELERY_RESULT_BACKEND_PASSWORD"):
         CELERY_RESULT_BACKEND = "redis://{password}@{host}:6379/0".format(
@@ -66,8 +66,16 @@ class BaseConfig(object):
         )
 
     CELERY_TIMEZONE = "Asia/Shanghai"
+    CELERY_TASK_RESULT_EXPIRES = 60 * 60
     CELERYD_CONCURRENCY = os.getenv("CELERYD_CONCURRENCY", 12)
-    CELERY_IMPORTS = ("app.tasks.email",)
+    CELERY_IMPORTS = ("app.tasks.email", "app.tasks.recommender")
+    CELERYBEAT_SCHEDULE = {
+        "computer-item-similarity": {
+            "task": "app.tasks.recommender.get_item_similarity",
+            "schedule": 10,
+            "args": [],
+        }
+    }
 
     # ELASTICSEARCH
     ELASTICSEARCH_URL = os.environ.get("ELASTICSEARCH_URL", "http://localhost:9200")
