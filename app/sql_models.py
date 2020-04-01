@@ -686,7 +686,7 @@ class Celebrity(SearchableMixin, MyBaseModel):
     douban_id = db.Column(db.Integer, nullable=True, unique=True)
     imdb_id = db.Column(db.String(16), nullable=True, unique=True)
     name = db.Column(db.String(128), nullable=False)
-    gender = db.Column(TINYINT(1), default=GenderType.MALE, nullable=False)
+    gender = db.Column(TINYINT(1), default=GenderType.MALE, nullable=True)
     image_id = db.Column(db.INTEGER, db.ForeignKey("images.id"))
     image = db.relationship("Image", backref="celebrity", lazy=True)
     born_place = db.Column(db.String(32))
@@ -699,7 +699,7 @@ class Celebrity(SearchableMixin, MyBaseModel):
     def create_one(
         name,
         gender,
-        image,
+        image=None,
         douban_id=None,
         imdb_id=None,
         born_place=None,
@@ -837,7 +837,7 @@ class Movie(SearchableMixin, MyBaseModel):
     original_title = db.Column(db.String(64))
     subtype = db.Column(db.String(10), nullable=False)
     year = db.Column(db.Integer, nullable=False)
-    image_id = db.Column(db.Integer, db.ForeignKey("images.id"), nullable=False)
+    image_id = db.Column(db.Integer, db.ForeignKey("images.id"), nullable=True)
     image = db.relationship("Image", backref="movie", lazy=True)
     seasons_count = db.Column(db.Integer)  # 季数
     episodes_count = db.Column(db.Integer)  # 集数
@@ -881,8 +881,8 @@ class Movie(SearchableMixin, MyBaseModel):
     def create_one(
         title,
         subtype,
-        image,
         year,
+        image=None,
         douban_id=None,
         imdb_id=None,
         original_title=None,

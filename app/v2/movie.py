@@ -13,6 +13,7 @@ from app.sql_models import Rating, User, rating_likes
 from app.utils.auth_decorator import auth, permission_required
 from app.utils.hashid import decode_str_to_id
 from app.utils.redis_utils import get_rank_movie_ids_with_range
+from app.recommenders.recommend import item_cf_recommendation
 from app.v2.responses import (
     ErrorCode,
     error,
@@ -71,9 +72,43 @@ class MovieRecommend(Resource):
             "per_page", default=20, type=inputs.positive, location="args"
         )
         args = parser.parse_args()
-        pagination = MovieModel.query.order_by(func.random()).paginate(
-            page=args.page, per_page=args.per_page
-        )
+        recommend_movies_id = item_cf_recommendation(g.current_user.id, 10)
+        if (
+            Rating.query.filter_by(user_id=g.current_user.id).count() < 10
+            or not recommend_movies_id
+        ):
+            score_stmt = (
+                sql_db.session.query(
+                    Rating.movie_id.label("movie_id"),
+                    func.avg(Rating.score).label("avg_score"),
+                )
+                .filter(Rating.category == RatingType.COLLECT)
+                .group_by(Rating.movie_id)
+                .order_by(desc("avg_score"))
+                .subquery()
+            )
+            watched_movies_id = [
+                rating.movie_id
+                for rating in Rating.query.filter_by(user_id=g.current_user.id)
+            ]
+            pagination = (
+                sql_db.session.query(MovieModel)
+                .outerjoin(score_stmt, MovieModel.id == score_stmt.c.movie_id)
+                .filter(~MovieModel.id.in_(watched_movies_id))
+                .order_by(score_stmt.c.avg_score.desc())
+                .paginate(args.page, args.per_page)
+            )
+        else:
+            movies = MovieModel.query.filter(
+                MovieModel.id.in_(
+                    recommend_movies_id[
+                        (args.page - 1) * args.per_page : args.page * args.per_page
+                    ]
+                )
+            )
+            pagination = Pagination(
+                "", args.page, args.per_page, len(recommend_movies_id), movies
+            )
         p = get_item_pagination(pagination, "api.MovieRecommend")
         return ok(
             "ok",
