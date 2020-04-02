@@ -3,6 +3,7 @@ from flask_restful import Resource, inputs, marshal, reqparse
 from flask_sqlalchemy import Pagination
 from sqlalchemy import desc
 from sqlalchemy.sql import func
+from sqlalchemy.exc import IntegrityError
 from werkzeug.datastructures import FileStorage
 
 from app.const import MovieCinemaStatus, RatingType
@@ -602,3 +603,100 @@ class Movies(Resource):
             return ok("Movie Created!", http_status_code=201)
         else:
             return error(ErrorCode.MOVIE_ALREADY_EXISTS, 403)
+
+    @auth.login_required
+    @permission_required("UPLOAD")
+    def patch(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("movie_id", type=str, location="form", required=True)
+        parser.add_argument(
+            "douban_id", type=inputs.regex("^[0-9]{0,10}$"), location="form"
+        )
+        parser.add_argument("title", type=str, required=True, location="form")
+        parser.add_argument(
+            "subtype", choices=["movie", "tv"], required=True, location="form"
+        )
+        parser.add_argument("year", type=int, required=True, location="form")
+        parser.add_argument("image", required=False, type=FileStorage, location="files")
+        parser.add_argument("countries", required=True, type=str, location="form")
+        parser.add_argument("genres_name", required=True, type=str, location="form")
+        parser.add_argument("original_title", type=str, location="form")
+        parser.add_argument("summary", required=True, type=str, location="form")
+        parser.add_argument("aka", type=str, location="form")
+        parser.add_argument(
+            "cinema_status",
+            default=MovieCinemaStatus.FINISHED,
+            type=int,
+            choices=[
+                MovieCinemaStatus.FINISHED,
+                MovieCinemaStatus.COMING,
+                MovieCinemaStatus.SHOWING,
+            ],
+        )
+        parser.add_argument("director_ids", required=True, type=str, location="form")
+        parser.add_argument("celebrities_ids", required=True, type=str, location="form")
+        parser.add_argument("seasons_count", type=int, location="form")
+        parser.add_argument("episodes_count", type=int, location="form")
+        parser.add_argument("current_season", type=int, location="form")
+        args = parser.parse_args()
+        movie = MovieModel.query.get(decode_str_to_id(args.movie_id))
+        if not movie:
+            return error(ErrorCode.MOVIE_NOT_FOUND, 404)
+        if args.subtype == "movie":
+            args.seasons_count = args.episodes_count = args.current_season = None
+        if args.aka:
+            args.aka = args.aka.strip().split("/")
+        if args.genres_name:
+            args.genres_name = args.genres_name.strip().split(" ")
+        if args.countries:
+            args.countries = args.countries.strip().split(" ")
+        directors_obj = Celebrity.query.filter(
+            Celebrity.id.in_(
+                [
+                    decode_str_to_id(hash_id)
+                    for hash_id in args.director_ids.split(" ")
+                    if args.director_ids
+                ]
+            )
+        )
+        celebrities_obj = Celebrity.query.filter(
+            Celebrity.id.in_(
+                [
+                    decode_str_to_id(hash_id)
+                    for hash_id in args.celebrities_ids.split(" ")
+                    if args.celebrities_ids
+                ]
+            )
+        )
+        if args.image:
+            image = Image.create_one(args.image)
+        movie.title = args.title
+        movie.subtype = args.subtype
+        if args.image:
+            movie.image = image
+        movie.year = args.year
+        movie.douban_id = args.douban_id
+        movie.original_title = args.original_title
+        movie.seasons_count = args.seasons_count
+        movie.episodes_count = args.episodes_count
+        movie.current_season = args.current_season
+        movie.summary = args.summary
+        movie.cinema_status = args.cinema_status
+        movie.aka_list = "/".join(args.aka)
+        movie.genres.clear()
+        movie.countries.clear()
+        movie.directors.clear()
+        movie.celebrities.clear()
+        for genre_name in args.genres_name:
+            genre_obj = Genre.create_one(genre_name)
+            movie.genres.append(genre_obj)
+        for country_name in args.countries:
+            country_obj = Country.create_one(country_name)
+            movie.countries.append(country_obj)
+        movie.directors += directors_obj
+        movie.celebrities += celebrities_obj
+        try:
+            sql_db.session.commit()
+        except IntegrityError:
+            return error(ErrorCode.MOVIE_ALREADY_EXISTS, 403)
+        return ok("Movie Updated!", http_status_code=200)

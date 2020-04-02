@@ -232,7 +232,7 @@ movie_resource_fields = {
     "title": fields.String,
     "subtype": fields.String,
     "image_url": fields.String,
-    "score": fields.Float,
+    "score": fields.Float(attribute=lambda x: round(x.score, 2)),
     "rating_count": fields.Integer(attribute=lambda x: x.ratings.count()),
     "douban_id": fields.String,
     "wish_by_count": fields.Integer(
@@ -242,6 +242,7 @@ movie_resource_fields = {
     "collect_by_count": fields.Integer(
         attribute=lambda x: x.user_collect_query.count()
     ),
+    "cinema_status": fields.Integer,
     "seasons_count": fields.Integer,
     "episodes_count": fields.Integer,
     "current_season": fields.Integer,
