@@ -10,11 +10,9 @@
 - [python3](https://www.python.org/)
 - [pipenv](https://github.com/pypa/pipenv)
 - [Redis](https://redis.io/)
-- [MongoDB](https://www.mongodb.com/download-center)
-- elasticsearch
-```
-docker run -d -p 9200:9200 --name elasticsearch -p 9300:9300 -v /home/xiao/Coding/dockerV/elasticsearch:/usr/share/elasticsearch/data -e "discovery.type=single-node" docker.elastic.co/elasticsearch/elasticsearch:7.5.2
-```
+- [MySQL](https://www.mysql.com/)
+- [Elasticsearch](https://www.elastic.co/cn/elasticsearch)
+
 ### 安装依赖
 #### 开发环境
 ```
@@ -24,14 +22,17 @@ pipenv install --dev
 ```
 pipenv install
 ```
-
+### 初始化数据
+```
+flask db init
+```
 ### 运行
 ```
 flask run
 ```
-### start celery worker
+### 启动 celery
 ```
-celery worker -A celery_worker.celery --loglevel=info
+celery worker -A celery_worker.celery -B --loglevel=info
 ```
 
 ## 如有问题请联系 cxxlxx0@gmail.com
