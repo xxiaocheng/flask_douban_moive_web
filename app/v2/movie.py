@@ -14,7 +14,7 @@ from app.sql_models import Rating, User, rating_likes
 from app.utils.auth_decorator import auth, permission_required
 from app.utils.hashid import decode_str_to_id
 from app.utils.redis_utils import get_rank_movie_ids_with_range
-from app.recommenders.recommend import item_cf_recommendation
+from app.recommender import item_cf_recommendation
 from app.v2.responses import (
     ErrorCode,
     error,

@@ -1,10 +1,10 @@
 import os
-from dotenv import find_dotenv, load_dotenv
+from dotenv import load_dotenv
 
-
-load_dotenv(find_dotenv())
 
 basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+env_path = os.path.join(basedir, ".env")
+load_dotenv(dotenv_path=env_path, verbose=True)
 
 
 class BaseConfig(object):
@@ -96,7 +96,7 @@ class DevelopmentConfig(BaseConfig):
         password=os.getenv("MYSQL_PASSWORD", "123456"),
         host=os.getenv("MYSQL_HOST", "127.0.0.1"),
         port=os.getenv("MYSQL_PORT", "3306"),
-        database=os.getenv("MYSQL_DATABASE", "movies_recommend_system_dev"),
+        database=os.getenv("MYSQL_DATABASE", "movies_recommend_system"),
     )
 
 

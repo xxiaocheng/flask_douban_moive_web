@@ -85,9 +85,9 @@ celerybeat-schedule
 # Environments
 .env
 .venv
-env/
+.env/
 venv/
-ENV/
+.env/
 env.bak/
 venv.bak/
 .flaskenv
@@ -116,4 +116,3 @@ venv.bak/
 .DS_Store
 data/
 .VSCodeCounter
-app/recommenders

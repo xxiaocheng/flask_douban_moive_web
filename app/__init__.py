@@ -49,6 +49,10 @@ def create_app(config_name=None):
     register_logger(app)
     celery.conf.update(app.config)
 
+    @app.route("/hi")
+    def h():
+        return 1 / 0
+
     app.elasticsearch = (
         Elasticsearch([app.config["ELASTICSEARCH_URL"]])
         if app.config["ELASTICSEARCH_URL"]
