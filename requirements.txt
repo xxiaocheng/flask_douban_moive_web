@@ -6,7 +6,7 @@ backcall==0.1.0
 billiard==3.6.3.0
 blinker==1.4
 celery==4.4.2
-certifi==2019.11.28
+certifi==2022.12.7
 click==7.1.1
 coverage==5.0.4
 decorator==4.4.2
